@@ -46,12 +46,8 @@ contract CounterTest is BaseTest {
         (currency0, currency1) = deployCurrencyPair();
 
         // Deploy the hook to an address with the correct flags
-        address flags = address(
-            uint160(
-                Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG
-                    | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG
-            ) ^ (0x4444 << 144) // Namespace the hook to avoid collisions
-        );
+        address flags =
+            address(uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG) ^ (0x4444 << 144)); // namespace
         bytes memory constructorArgs = abi.encode(poolManager); // Add all the necessary constructor arguments from the hook
         deployCodeTo("Counter.sol:Counter", constructorArgs, flags);
         hook = Counter(flags);
@@ -88,10 +84,6 @@ contract CounterTest is BaseTest {
     }
 
     function testCounterHooks() public {
-        // positions were created in setup()
-        assertEq(hook.beforeAddLiquidityCount(poolId), 1);
-        assertEq(hook.beforeRemoveLiquidityCount(poolId), 0);
-
         assertEq(hook.beforeSwapCount(poolId), 0);
         assertEq(hook.afterSwapCount(poolId), 0);
 
@@ -114,24 +106,5 @@ contract CounterTest is BaseTest {
         assertEq(hook.afterSwapCount(poolId), 1);
     }
 
-    function testLiquidityHooks() public {
-        // positions were created in setup()
-        assertEq(hook.beforeAddLiquidityCount(poolId), 1);
-        assertEq(hook.beforeRemoveLiquidityCount(poolId), 0);
-
-        // remove liquidity
-        uint256 liquidityToRemove = 1e18;
-        positionManager.decreaseLiquidity(
-            tokenId,
-            liquidityToRemove,
-            0, // Max slippage, token0
-            0, // Max slippage, token1
-            address(this),
-            block.timestamp,
-            Constants.ZERO_BYTES
-        );
-
-        assertEq(hook.beforeAddLiquidityCount(poolId), 1);
-        assertEq(hook.beforeRemoveLiquidityCount(poolId), 1);
-    }
+    // Liquidity hooks removed; only swap hooks are active.
 }

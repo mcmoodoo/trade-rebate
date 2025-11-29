@@ -14,12 +14,7 @@ contract DeployHook is SequenceBase {
         Deployments memory d = _readDeployments();
         require(d.poolManager != address(0), "PoolManager not deployed");
 
-        uint160 flags = uint160(
-            Hooks.BEFORE_SWAP_FLAG |
-            Hooks.AFTER_SWAP_FLAG |
-            Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
-            Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG
-        );
+        uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
 
         bytes memory args = abi.encode(IPoolManager(d.poolManager));
         (address expected, bytes32 salt) =
