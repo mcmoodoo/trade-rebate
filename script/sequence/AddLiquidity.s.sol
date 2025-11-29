@@ -24,9 +24,9 @@ contract AddLiquidityFromJson is SequenceBase {
     using PoolIdLibrary for PoolKey;
 
     // Configure nominal deposit amounts for each token (raw units)
-    // Assuming fUSDC(6) and fWBTC(8); adjust as needed.
-    uint256 public constant FUSDC_AMOUNT = 100_000_000; // 100 fUSDC (6 decimals)
-    uint256 public constant FWBTC_AMOUNT = 10_000_000;  // 0.1 fWBTC (8 decimals)
+    // Assuming mUSDC(6) and mWBTC(8); adjust as needed.
+    uint256 public constant MUSDC_AMOUNT = 100_000_000; // 100 mUSDC (6 decimals)
+    uint256 public constant MWBTC_AMOUNT = 10_000_000;  // 0.1 mWBTC (8 decimals)
 
     function run() external {
         Deployments memory d = _readDeployments();
@@ -49,8 +49,8 @@ contract AddLiquidityFromJson is SequenceBase {
 
         // Align deposit amounts with currency order
         bool token0IsC0 = (a < b);
-        uint256 amount0Desired = token0IsC0 ? FUSDC_AMOUNT : FWBTC_AMOUNT;
-        uint256 amount1Desired = token0IsC0 ? FWBTC_AMOUNT : FUSDC_AMOUNT;
+        uint256 amount0Desired = token0IsC0 ? MUSDC_AMOUNT : MWBTC_AMOUNT;
+        uint256 amount1Desired = token0IsC0 ? MWBTC_AMOUNT : MUSDC_AMOUNT;
 
         // Read current pool price
         (uint160 sqrtPriceX96,,,) = IPoolManager(d.poolManager).getSlot0(poolKey.toId());
