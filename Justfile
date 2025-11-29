@@ -12,19 +12,19 @@ check-env:
     echo "PRIVATE_KEY={{private_key}}"
 
 deploy-infra: check-env
-    forge script script/sequence/DeployV4InfraToJson.s.sol:DeployV4InfraToJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
+    forge script script/sequence/DeployV4Infra.s.sol:DeployV4Infra --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 
 deploy-tokens: check-env
-    forge script script/sequence/DeployTokensToJson.s.sol:DeployTokensToJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
+    forge script script/sequence/DeployTokens.s.sol:DeployTokens --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 
 deploy-hook: check-env
-    forge script script/sequence/DeployHookToJson.s.sol:DeployHookToJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
+    forge script script/sequence/DeployHook.s.sol:DeployHook --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 
 create-pool: check-env
-    forge script script/sequence/CreatePoolFromJson.s.sol:CreatePoolFromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
+    forge script script/sequence/CreatePool.s.sol:CreatePoolFromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 
 add-liquidity: check-env
-    forge script script/sequence/AddLiquidityFromJson.s.sol:AddLiquidityFromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
+    forge script script/sequence/AddLiquidity.s.sol:AddLiquidityFromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 
 # Run the full sequence in order
 seq-all: check-env

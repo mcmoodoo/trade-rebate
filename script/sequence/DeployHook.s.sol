@@ -9,7 +9,7 @@ import {SequenceBase} from "./SequenceBase.sol";
 import {Counter} from "../../src/Counter.sol";
 
 /// @notice Mines and deploys the Counter hook; saves address to deployments.json
-contract DeployHookToJson is SequenceBase {
+contract DeployHook is SequenceBase {
     function run() external {
         Deployments memory d = _readDeployments();
         require(d.poolManager != address(0), "PoolManager not deployed");

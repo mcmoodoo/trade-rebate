@@ -5,7 +5,7 @@ import {SequenceBase} from "./SequenceBase.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 /// @notice Deploys two mock tokens (fUSDC, fWBTC) and stores their addresses.
-contract DeployTokensToJson is SequenceBase {
+contract DeployTokens is SequenceBase {
     function run() external {
         vm.startBroadcast();
         // USDC-like: 6 decimals

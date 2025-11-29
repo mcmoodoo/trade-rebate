@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {SequenceBase} from "./SequenceBase.sol";
 
 /// @notice Deploy Permit2, PoolManager, PositionManager, Router and persist addresses.
-contract DeployV4InfraToJson is SequenceBase {
+contract DeployV4Infra is SequenceBase {
     function run() external {
         vm.startBroadcast();
         deployArtifacts();
