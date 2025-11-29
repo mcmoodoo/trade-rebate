@@ -6,7 +6,7 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
 import {SequenceBase} from "./SequenceBase.sol";
-import {Counter} from "../../src/Counter.sol";
+import {TradeRebate} from "../../src/TradeRebate.sol";
 
 /// @notice Mines and deploys the Counter hook; saves address to deployments.json
 contract DeployHook is SequenceBase {
@@ -18,10 +18,10 @@ contract DeployHook is SequenceBase {
 
         bytes memory args = abi.encode(IPoolManager(d.poolManager));
         (address expected, bytes32 salt) =
-            HookMiner.find(CREATE2_FACTORY, flags, type(Counter).creationCode, args);
+            HookMiner.find(CREATE2_FACTORY, flags, type(TradeRebate).creationCode, args);
 
         vm.startBroadcast();
-        Counter counter = new Counter{salt: salt}(IPoolManager(d.poolManager));
+        TradeRebate counter = new TradeRebate{salt: salt}(IPoolManager(d.poolManager));
         vm.stopBroadcast();
 
         require(address(counter) == expected, "Deployed hook address mismatch");

@@ -4,20 +4,16 @@ pragma solidity ^0.8.26;
 import {BaseHook} from "@openzeppelin/uniswap-hooks/src/base/BaseHook.sol";
 
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
-import {IPoolManager, SwapParams, ModifyLiquidityParams} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {IPoolManager, SwapParams} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 
-contract Counter is BaseHook {
+contract TradeRebate is BaseHook {
     using PoolIdLibrary for PoolKey;
 
-    // NOTE: ---------------------------------------------------------
-    // state variables should typically be unique to a pool
-    // a single hook contract should be able to service multiple pools
-    // ---------------------------------------------------------------
-
+    // Example counters for swap hooks; extend with rebate logic as needed.
     mapping(PoolId => uint256 count) public beforeSwapCount;
     mapping(PoolId => uint256 count) public afterSwapCount;
 
@@ -42,10 +38,6 @@ contract Counter is BaseHook {
         });
     }
 
-    // -----------------------------------------------
-    // NOTE: see IHooks.sol for function documentation
-    // -----------------------------------------------
-
     function _beforeSwap(address, PoolKey calldata key, SwapParams calldata, bytes calldata)
         internal
         override
@@ -63,5 +55,5 @@ contract Counter is BaseHook {
         afterSwapCount[key.toId()]++;
         return (BaseHook.afterSwap.selector, 0);
     }
-
 }
+

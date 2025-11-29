@@ -18,7 +18,7 @@ import {Constants} from "@uniswap/v4-core/test/utils/Constants.sol";
 
 import {EasyPosm} from "./utils/libraries/EasyPosm.sol";
 
-import {Counter} from "../src/Counter.sol";
+import {TradeRebate} from "../src/TradeRebate.sol";
 import {BaseTest} from "./utils/BaseTest.sol";
 
 contract CounterTest is BaseTest {
@@ -32,7 +32,7 @@ contract CounterTest is BaseTest {
 
     PoolKey poolKey;
 
-    Counter hook;
+    TradeRebate hook;
     PoolId poolId;
 
     uint256 tokenId;
@@ -49,8 +49,8 @@ contract CounterTest is BaseTest {
         address flags =
             address(uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG) ^ (0x4444 << 144)); // namespace
         bytes memory constructorArgs = abi.encode(poolManager); // Add all the necessary constructor arguments from the hook
-        deployCodeTo("Counter.sol:Counter", constructorArgs, flags);
-        hook = Counter(flags);
+        deployCodeTo("TradeRebate.sol:TradeRebate", constructorArgs, flags);
+        hook = TradeRebate(flags);
 
         // Create the pool
         poolKey = PoolKey(currency0, currency1, 3000, 60, IHooks(hook));
