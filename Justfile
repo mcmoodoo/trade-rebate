@@ -33,3 +33,7 @@ seq-all: check-env
     just deploy-hook
     just create-pool
     just add-liquidity
+
+# Inspect PositionManager-related state. Optionally set OWNER or rely on OWNER_PK from private_key.
+describe-pm: check-env
+    OWNER_PK="{{private_key}}" forge script script/sequence/DescribePositionManager.s.sol:DescribePositionManager --rpc-url "{{rpc_url}}"
