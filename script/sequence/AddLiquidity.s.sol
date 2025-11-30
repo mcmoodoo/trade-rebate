@@ -17,6 +17,11 @@ import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionMa
 import {IPermit2} from "permit2/src/interfaces/IPermit2.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 
+// Simple helper to safely receive native ETH without reverting
+contract PayableReceiver {
+    receive() external payable {}
+}
+
 /// @notice Adds initial liquidity to the created pool using stored deployments.
 contract AddLiquidityFromJson is SequenceBase {
     using CurrencyLibrary for Currency;
@@ -78,9 +83,19 @@ contract AddLiquidityFromJson is SequenceBase {
             amount1Desired
         );
 
-        // Slippage caps (tiny buffer)
-        uint256 amount0Max = amount0Desired + 1;
-        uint256 amount1Max = amount1Desired + 1;
+        // Compute the exact amounts that will be used for the computed liquidity.
+        // This prevents overfunding and avoids sweeping large native ETH refunds,
+        // which can revert when the recipient is a contract without a payable receive.
+        (uint256 amount0Exact, uint256 amount1Exact) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
+            liquidity
+        );
+
+        // Allow +1 unit headroom on both sides to accommodate rounding in engine.
+        uint256 amount0Max = amount0Exact + 1;
+        uint256 amount1Max = amount1Exact + 1;
 
         // Prepare actions and params for PositionManager.modifyLiquidities
         bytes memory actions = abi.encodePacked(
@@ -95,12 +110,19 @@ contract AddLiquidityFromJson is SequenceBase {
             poolKey, tickLower, tickUpper, liquidity, amount0Max, amount1Max, msg.sender, new bytes(0)
         );
         params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
-        params[2] = abi.encode(poolKey.currency0, msg.sender);
-        params[3] = abi.encode(poolKey.currency1, msg.sender);
+
+        // Route native ETH refunds (if any) to a dedicated payable receiver to avoid reverts
+        address payable ethRefundReceiver = payable(msg.sender);
+        if (c0IsEth || c1IsEth) {
+            ethRefundReceiver = payable(address(new PayableReceiver()));
+        }
+        params[2] = abi.encode(poolKey.currency0, c0IsEth ? ethRefundReceiver : payable(msg.sender));
+        params[3] = abi.encode(poolKey.currency1, c1IsEth ? ethRefundReceiver : payable(msg.sender));
 
         // Determine ETH value to send if one side is native
-        uint256 ethValue =
-            c0IsEth ? amount0Max : (c1IsEth ? amount1Max : 0);
+        // Provide slight headroom (+1) for native ETH to avoid rounding shortfall;
+        // any excess will be refunded to the payable receiver.
+        uint256 ethValue = c0IsEth ? (amount0Exact + 1) : (c1IsEth ? (amount1Exact + 1) : 0);
 
         vm.startBroadcast();
         // Approvals via Permit2 for ERC20 side (must be broadcast by the EOA supplying funds)
@@ -114,7 +136,7 @@ contract AddLiquidityFromJson is SequenceBase {
         }
         IPositionManager(d.positionManager).modifyLiquidities{value: ethValue}(
             abi.encode(actions, params),
-            block.timestamp + 600
+            type(uint256).max
         );
         vm.stopBroadcast();
     }
