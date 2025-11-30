@@ -32,7 +32,7 @@ seq-all: check-env
     # just deploy-tokens
     just deploy-hook
     just create-pool
-    just swap-eth-usdc-unichain
+    just swap-eth-usdc
     just add-liquidity
 
 # Inspect PositionManager-related state. Optionally set OWNER or rely on OWNER_PK from private_key.
@@ -41,7 +41,7 @@ describe-pm: check-env
 
 # Swap 5 ETH -> USDC on Unichain via v4 router (router read from deployments.json)
 # Optional env overrides: AMOUNT_OUT_MIN, RECEIVER, FEE, TICK_SPACING
-swap-eth-usdc-unichain: check-env
+swap-eth-usdc: check-env
     forge script script/SwapETHToUSDC_Unichain.s.sol:SwapETHToUSDC_Unichain --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
 
 my-usdc-balance: check-env
