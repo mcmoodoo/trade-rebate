@@ -23,15 +23,16 @@ contract AddLiquidityFromJson is SequenceBase {
     using StateLibrary for IPoolManager;
     using PoolIdLibrary for PoolKey;
 
-    // Configure nominal deposit amounts for each token (raw units)
-    // Assuming mUSDC(6) and mWBTC(8); adjust as needed.
-    uint256 public constant MUSDC_AMOUNT = 100_000_000; // 100 mUSDC (6 decimals)
-    uint256 public constant MWBTC_AMOUNT = 10_000_000;  // 0.1 mWBTC (8 decimals)
+    // Configure nominal deposit amounts for ETH and USDC
+    // Defaults: 0.5 ETH and 1,000 USDC
+    uint256 public constant ETH_AMOUNT_WEI = 0.5 ether;    // native ETH
+    uint256 public constant USDC_AMOUNT = 1_000e6;         // 6 decimals
 
     function run() external {
         Deployments memory d = _readDeployments();
         require(d.poolManager != address(0) && d.positionManager != address(0), "V4 infra not deployed");
-        require(d.token0 != address(0) && d.token1 != address(0), "Tokens not deployed");
+        // Allow native ETH (address(0)) for one side. Only ensure tokens are not identical.
+        require(d.token0 != d.token1, "Invalid token addresses");
         require(d.lpFee != 0 && d.tickSpacing != 0, "Pool config not set");
 
         // Build PoolKey based on sorted currencies (must match pool initialization)
@@ -47,10 +48,18 @@ contract AddLiquidityFromJson is SequenceBase {
             hooks: IHooks(d.hook) // must match the pool's hook to compute same PoolId
         });
 
-        // Align deposit amounts with currency order
+        // Align deposit amounts with currency order; handle native ETH
         bool token0IsC0 = (a < b);
-        uint256 amount0Desired = token0IsC0 ? MUSDC_AMOUNT : MWBTC_AMOUNT;
-        uint256 amount1Desired = token0IsC0 ? MWBTC_AMOUNT : MUSDC_AMOUNT;
+        // Identify which side is native ETH
+        bool c0IsEth = Currency.unwrap(c0) == address(0);
+        bool c1IsEth = Currency.unwrap(c1) == address(0);
+        // Set desired amounts by currency order
+        uint256 amount0Desired = token0IsC0
+            ? (Currency.unwrap(a) == address(0) ? ETH_AMOUNT_WEI : USDC_AMOUNT)
+            : (Currency.unwrap(b) == address(0) ? ETH_AMOUNT_WEI : USDC_AMOUNT);
+        uint256 amount1Desired = token0IsC0
+            ? (Currency.unwrap(b) == address(0) ? ETH_AMOUNT_WEI : USDC_AMOUNT)
+            : (Currency.unwrap(a) == address(0) ? ETH_AMOUNT_WEI : USDC_AMOUNT);
 
         // Read current pool price
         (uint160 sqrtPriceX96,,,) = IPoolManager(d.poolManager).getSlot0(poolKey.toId());
@@ -89,13 +98,21 @@ contract AddLiquidityFromJson is SequenceBase {
         params[2] = abi.encode(poolKey.currency0, msg.sender);
         params[3] = abi.encode(poolKey.currency1, msg.sender);
 
+        // Determine ETH value to send if one side is native
+        uint256 ethValue =
+            c0IsEth ? amount0Max : (c1IsEth ? amount1Max : 0);
+
         vm.startBroadcast();
-        // Approvals via Permit2 (must be broadcast by the EOA supplying funds)
-        IERC20(d.token0).approve(d.permit2, type(uint256).max);
-        IERC20(d.token1).approve(d.permit2, type(uint256).max);
-        IPermit2(d.permit2).approve(d.token0, d.positionManager, type(uint160).max, type(uint48).max);
-        IPermit2(d.permit2).approve(d.token1, d.positionManager, type(uint160).max, type(uint48).max);
-        IPositionManager(d.positionManager).modifyLiquidities(
+        // Approvals via Permit2 for ERC20 side (must be broadcast by the EOA supplying funds)
+        if (d.token0 != address(0)) {
+            IERC20(d.token0).approve(d.permit2, type(uint256).max);
+            IPermit2(d.permit2).approve(d.token0, d.positionManager, type(uint160).max, type(uint48).max);
+        }
+        if (d.token1 != address(0)) {
+            IERC20(d.token1).approve(d.permit2, type(uint256).max);
+            IPermit2(d.permit2).approve(d.token1, d.positionManager, type(uint160).max, type(uint48).max);
+        }
+        IPositionManager(d.positionManager).modifyLiquidities{value: ethValue}(
             abi.encode(actions, params),
             block.timestamp + 600
         );

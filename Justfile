@@ -42,3 +42,6 @@ describe-pm: check-env
 # Optional env overrides: AMOUNT_OUT_MIN, RECEIVER, FEE, TICK_SPACING
 swap-eth-usdc-unichain: check-env
     forge script script/SwapETHToUSDC_Unichain.s.sol:SwapETHToUSDC_Unichain --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
+
+my-usdc-balance: check-env
+    cast call 0x078D782b760474a361dDA0AF3839290b0EF57AD6 "balanceOf(address)(uint256)" 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
