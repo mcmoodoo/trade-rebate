@@ -51,3 +51,7 @@ my-usdc-balance: check-env
 # Optional env overrides: AMOUNT_IN_WEI, AMOUNT_OUT_MIN, RECEIVER
 swap-eth-usdc-my-pool: check-env
     forge script script/sequence/SwapETHToUSDC.s.sol:SwapETHToUSDC_FromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
+
+# Describe current pool state and positions from deployments.json
+describe-pool: check-env
+    forge script script/sequence/DescribePool.s.sol:DescribePool --rpc-url "{{rpc_url}}" -vvvv
