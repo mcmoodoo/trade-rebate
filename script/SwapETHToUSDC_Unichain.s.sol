@@ -43,7 +43,7 @@ contract SwapETHToUSDC_Unichain is Script {
         });
 
         // Exact input: 5 ETH
-        uint256 amountIn = 20 ether;
+        uint256 amountIn = 5 ether;
 
         // No hook data for a standard pool
         bytes memory hookData = new bytes(0);
