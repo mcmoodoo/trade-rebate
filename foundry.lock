@@ -1,4 +1,10 @@
 {
+  "lib/aave-address-book": {
+    "tag": {
+      "name": "v4.37.0",
+      "rev": "deac7123d64b94fa0030230c18c92c7684683ed8"
+    }
+  },
   "lib/forge-std": {
     "rev": "8bbcf6e3f8f62f419e5429a0bd89331c85c37824"
   },

@@ -7,3 +7,6 @@
 [submodule "lib/hookmate"]
 	path = lib/hookmate
 	url = https://github.com/akshatmittal/hookmate
+[submodule "lib/aave-address-book"]
+	path = lib/aave-address-book
+	url = https://github.com/bgd-labs/aave-address-book
