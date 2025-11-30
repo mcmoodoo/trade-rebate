@@ -46,3 +46,8 @@ swap-eth-usdc-unichain: check-env
 
 my-usdc-balance: check-env
     cast call 0x078D782b760474a361dDA0AF3839290b0EF57AD6 "balanceOf(address)(uint256)" 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+# Swap ETH -> USDC using sequence script reading deployments.json
+# Optional env overrides: AMOUNT_IN_WEI, AMOUNT_OUT_MIN, RECEIVER
+swap-eth-usdc-my-pool: check-env
+    forge script script/sequence/SwapETHToUSDC.s.sol:SwapETHToUSDC_FromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
