@@ -16,3 +16,11 @@ How it triggers the corrective swap
 
 Example test using Foundry
 Keep code concise.
+
+## So Far
+
+I've got USDC on the local anvil fork. I am able to swap default anvil's account's ETH for USDC: 5ETH -> USDC
+
+I can then provide that token pair as liquidity to my own Pool with a hook attached.
+
+What can I do? Take out a flash loan from AAVE/Morpho...
