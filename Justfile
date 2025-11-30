@@ -37,3 +37,8 @@ seq-all: check-env
 # Inspect PositionManager-related state. Optionally set OWNER or rely on OWNER_PK from private_key.
 describe-pm: check-env
     OWNER_PK="{{private_key}}" forge script script/sequence/DescribePositionManager.s.sol:DescribePositionManager --rpc-url "{{rpc_url}}"
+
+# Swap 5 ETH -> USDC on Unichain via v4 router (router read from deployments.json)
+# Optional env overrides: AMOUNT_OUT_MIN, RECEIVER, FEE, TICK_SPACING
+swap-eth-usdc-unichain: check-env
+    forge script script/SwapETHToUSDC_Unichain.s.sol:SwapETHToUSDC_Unichain --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
