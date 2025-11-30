@@ -17,13 +17,12 @@ import {IUniswapV4Router04} from "hookmate/interfaces/router/IUniswapV4Router04.
 ///        - FEE: pool fee in bps (defaults to 3000)
 ///        - TICK_SPACING: pool tick spacing (defaults to 60)
 contract SwapETHToUSDC_Unichain is Script {
-    // USDC on Unichain (provided)
-    address internal constant USDC = 0x078D782b760474a361dDA0AF3839290b0EF57AD6;
-
     function run() external {
         // Load router from deployments.json
         string memory json = vm.readFile("deployments.json");
         address routerAddr = vm.parseJsonAddress(json, ".router");
+        // USDC is token1 in deployments.json
+        address usdc = vm.parseJsonAddress(json, ".token1");
         IUniswapV4Router04 V4_ROUTER = IUniswapV4Router04(payable(routerAddr));
 
         // Optional configuration
@@ -36,7 +35,7 @@ contract SwapETHToUSDC_Unichain is Script {
         // Note: Currency(address(0)) represents native ETH
         PoolKey memory poolKey = PoolKey({
             currency0: Currency.wrap(address(0)), // ETH (native)
-            currency1: Currency.wrap(USDC),       // USDC
+            currency1: Currency.wrap(usdc),       // USDC from deployments.json
             fee: fee,
             tickSpacing: tickSpacing,
             hooks: IHooks(address(0))
