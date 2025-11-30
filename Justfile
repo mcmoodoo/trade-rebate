@@ -55,3 +55,15 @@ swap-eth-usdc-my-pool: check-env
 # Describe current pool state and positions from deployments.json
 describe-pool: check-env
     forge script script/sequence/DescribePool.s.sol:DescribePool --rpc-url "{{rpc_url}}" -vvvv
+
+# Run a 1 WETH flash loan on Aave v3 Arbitrum and repay in-tx
+flashloan-aave: check-env
+    forge script script/FlashLoanAaveV3.s.sol:FlashLoanAaveV3 --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
+
+# Wrap ETH into WETH (defaults to 10 ETH)
+wrap-eth amount_wei="10000000000000000000": check-env
+    WRAP_AMOUNT_WEI="{{amount_wei}}" forge script script/WrapETH.s.sol:WrapETH --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
+
+# Query WETH balance (defaults to anvil's first default address)
+weth-balance owner="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": check-env
+    cast call 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1 "balanceOf(address)(uint256)" "{{owner}}" --rpc-url "{{rpc_url}}"
