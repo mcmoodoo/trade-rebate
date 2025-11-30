@@ -22,7 +22,8 @@ contract CreatePoolFromJson is SequenceBase {
     function run() external {
         Deployments memory d = _readDeployments();
         require(d.positionManager != address(0), "PositionManager not deployed");
-        require(d.token0 != address(0) && d.token1 != address(0), "Tokens not deployed");
+        // Allow native ETH (address(0)) for one side. Only ensure tokens are not identical.
+        require(d.token0 != d.token1, "Invalid token addresses");
 
         // Sort currencies by address as required by v4
         Currency a = Currency.wrap(d.token0);

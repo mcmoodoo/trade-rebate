@@ -21,7 +21,7 @@ deploy-hook: check-env
     forge script script/sequence/DeployHook.s.sol:DeployHook --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 
 create-pool: check-env
-    forge script script/sequence/CreatePool.s.sol:CreatePoolFromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
+    forge script script/sequence/CreatePool.s.sol:CreatePoolFromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
 
 add-liquidity: check-env
     forge script script/sequence/AddLiquidity.s.sol:AddLiquidityFromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
@@ -29,7 +29,7 @@ add-liquidity: check-env
 # Run the full sequence in order
 seq-all: check-env
     just deploy-infra
-    just deploy-tokens
+    # just deploy-tokens
     just deploy-hook
     just create-pool
     just add-liquidity
