@@ -21,7 +21,7 @@ import {EasyPosm} from "./utils/libraries/EasyPosm.sol";
 import {TradeRebate} from "../src/TradeRebate.sol";
 import {BaseTest} from "./utils/BaseTest.sol";
 
-contract CounterTest is BaseTest {
+contract TradeRebateTest is BaseTest {
     using EasyPosm for IPositionManager;
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
@@ -84,9 +84,6 @@ contract CounterTest is BaseTest {
     }
 
     function testCounterHooks() public {
-        assertEq(hook.beforeSwapCount(poolId), 0);
-        assertEq(hook.afterSwapCount(poolId), 0);
-
         // Perform a test swap //
         uint256 amountIn = 1e18;
         BalanceDelta swapDelta = swapRouter.swapExactTokensForTokens({
@@ -101,9 +98,6 @@ contract CounterTest is BaseTest {
         // ------------------- //
 
         assertEq(int256(swapDelta.amount0()), -int256(amountIn));
-
-        assertEq(hook.beforeSwapCount(poolId), 1);
-        assertEq(hook.afterSwapCount(poolId), 1);
     }
 
     // Liquidity hooks removed; only swap hooks are active.

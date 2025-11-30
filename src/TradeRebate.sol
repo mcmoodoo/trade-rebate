@@ -13,10 +13,6 @@ import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/type
 contract TradeRebate is BaseHook {
     using PoolIdLibrary for PoolKey;
 
-    // Example counters for swap hooks; extend with rebate logic as needed.
-    mapping(PoolId => uint256 count) public beforeSwapCount;
-    mapping(PoolId => uint256 count) public afterSwapCount;
-
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
@@ -43,7 +39,6 @@ contract TradeRebate is BaseHook {
         override
         returns (bytes4, BeforeSwapDelta, uint24)
     {
-        beforeSwapCount[key.toId()]++;
         return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
@@ -52,7 +47,6 @@ contract TradeRebate is BaseHook {
         override
         returns (bytes4, int128)
     {
-        afterSwapCount[key.toId()]++;
         return (BaseHook.afterSwap.selector, 0);
     }
 }
