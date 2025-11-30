@@ -32,6 +32,7 @@ seq-all: check-env
     # just deploy-tokens
     just deploy-hook
     just create-pool
+    just swap-eth-usdc-unichain
     just add-liquidity
 
 # Inspect PositionManager-related state. Optionally set OWNER or rely on OWNER_PK from private_key.
