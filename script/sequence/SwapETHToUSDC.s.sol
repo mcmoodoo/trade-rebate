@@ -44,8 +44,8 @@ contract SwapETHToUSDC_FromJson is SequenceBase {
         require(c0IsEth || c1IsEth, "No native ETH in pool");
         bool zeroForOne = c0IsEth; // ETH is currency0 => ETH -> USDC
 
-        // Hook data (none by default)
-        bytes memory hookData = new bytes(0);
+        // Opt-in to self-arbitrage in the hook
+        bytes memory hookData = abi.encode(receiver, true);
 
         IUniswapV4Router04 router = IUniswapV4Router04(payable(d.router));
 
