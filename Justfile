@@ -11,6 +11,9 @@ check-env:
     echo "RPC_URL={{rpc_url}}"
     echo "PRIVATE_KEY={{private_key}}"
 
+anvil:
+    anvil --rpc-url $INFURA_ARBITRUM_MAINNET_RPC -v
+
 deploy-infra: check-env
     forge script script/sequence/DeployV4Infra.s.sol:DeployV4Infra --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 
