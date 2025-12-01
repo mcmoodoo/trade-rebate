@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  blockscout-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: blockscout
+      POSTGRES_PASSWORD: blockscout
+      POSTGRES_DB: blockscout
+    ports:
+      - "5432:5432"
+
+  blockscout:
+    image: blockscout/blockscout:latest
+    depends_on:
+      - blockscout-db
+    environment:
+      DATABASE_URL: postgres://blockscout:blockscout@blockscout-db:5432/blockscout
+      ETHEREUM_JSONRPC_HTTP_URL: http://host.docker.internal:8545
+      ETHEREUM_JSONRPC_WS_URL: ws://host.docker.internal:8545
+      NETWORK_NAME: "Local Anvil"
+      CHAIN_ID: "31337"
+    ports:
+      - "4000:4000"

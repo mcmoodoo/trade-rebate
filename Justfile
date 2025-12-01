@@ -21,10 +21,10 @@ deploy-hook: check-env
     forge script script/sequence/DeployHook.s.sol:DeployHook --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 
 create-pool: check-env
-    forge script script/sequence/CreatePool.s.sol:CreatePoolFromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
+    forge script script/sequence/CreatePool.s.sol:CreatePool --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
 
 add-liquidity: check-env
-    forge script script/sequence/AddLiquidity.s.sol:AddLiquidityFromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
+    forge script script/sequence/AddLiquidity.s.sol:AddLiquidity --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 
 # Run the full sequence in order
 seq-all: check-env
@@ -34,6 +34,8 @@ seq-all: check-env
     just create-pool
     just swap-eth-usdc
     just add-liquidity
+    just wrap-eth
+    just prefund-deep-amm
 
 # Inspect PositionManager-related state. Optionally set OWNER or rely on OWNER_PK from private_key.
 describe-pm: check-env
@@ -50,7 +52,7 @@ my-usdc-balance: check-env
 # Swap ETH -> USDC using sequence script reading deployments.json
 # Optional env overrides: AMOUNT_IN_WEI, AMOUNT_OUT_MIN, RECEIVER
 swap-eth-usdc-my-pool: check-env
-    forge script script/sequence/SwapETHToUSDC.s.sol:SwapETHToUSDC_FromJson --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
+    forge script script/sequence/SwapETHToUSDC.s.sol:SwapETHToUSDC --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
 
 # Describe current pool state and positions from deployments.json
 describe-pool: check-env
@@ -74,4 +76,4 @@ weth-balance owner="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": check-env
 # - weth_wei: WETH amount to fund (wraps ETH), default 1 WETH
 # - usdc: USDC amount (6 decimals), default 100_000_000 (100 USDC)
 prefund-deep-amm deep="" weth_wei="1000000000000000000" usdc="100000000": check-env
-    DEEP_AMM="{{deep}}" FUND_WETH_WEI="{{weth_wei}}" FUND_USDC="{{usdc}}" forge script script/PrefundDeepAmm.s.sol:PrefundDeepAmm --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
+    DEEP_AMM="{{deep}}" FUND_WETH_WEI="{{weth_wei}}" FUND_USDC="{{usdc}}" forge script script/sequence/PrefundDeepAmm.s.sol:PrefundDeepAmm --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv

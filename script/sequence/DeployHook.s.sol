@@ -39,6 +39,7 @@ contract DeployHook is SequenceBase {
 
         d.hook = address(counter);
         d.deepAmm = address(deep);
+        d.weth = weth;
         _writeDeployments(d);
     }
 }
