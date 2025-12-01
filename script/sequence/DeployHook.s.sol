@@ -6,7 +6,9 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
 import {SequenceBase} from "./SequenceBase.sol";
-import {TradeRebate} from "../../src/TradeRebate.sol";
+import {TradeRebate, IAavePool} from "../../src/TradeRebate.sol";
+import {DeepAmmMock} from "../../src/DeepAmmMock.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 /// @notice Mines and deploys the Counter hook; saves address to deployments.json
 contract DeployHook is SequenceBase {
@@ -16,12 +18,22 @@ contract DeployHook is SequenceBase {
 
         uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
 
-        bytes memory args = abi.encode(IPoolManager(d.poolManager));
+        // Deploy a mock deep AMM to trade against; fund it separately if needed
+        DeepAmmMock deep = new DeepAmmMock();
+
+        // Aave v3 Arbitrum Pool and canonical assets (USDC, WETH)
+        address aavePool = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
+        address weth = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
+        address usdc = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
+
+        // Mine the hook address for the full constructor args
+        bytes memory args = abi.encode(IPoolManager(d.poolManager), aavePool, address(deep), weth, usdc, uint256(1_000_000e6));
         (address expected, bytes32 salt) =
             HookMiner.find(CREATE2_FACTORY, flags, type(TradeRebate).creationCode, args);
 
         vm.startBroadcast();
-        TradeRebate counter = new TradeRebate{salt: salt}(IPoolManager(d.poolManager));
+        TradeRebate counter =
+            new TradeRebate{salt: salt}(IPoolManager(d.poolManager), IAavePool(aavePool), deep, IERC20(weth), IERC20(usdc), 1_000_000e6);
         vm.stopBroadcast();
 
         require(address(counter) == expected, "Deployed hook address mismatch");

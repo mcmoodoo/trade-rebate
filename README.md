@@ -24,3 +24,14 @@ I've got USDC on the local anvil fork. I am able to swap default anvil's account
 I can then provide that token pair as liquidity to my own Pool with a hook attached.
 
 What can I do? Take out a flash loan from AAVE/Morpho...
+
+### Flash‑loan arbitrage rebate (experimental)
+
+- **What it does**: The `TradeRebate` hook snapshots the pre‑swap tick in `beforeSwap` and, if enabled, uses `afterSwap` to take an Aave v3 flash loan, trade against a deep‑liquidity AMM (mocked), repay, and record any USDC profit on its internal ledger (`surplusByToken`).
+- **Deploy/run**:
+  - `just deploy-hook` then `just create-pool` (deploys `TradeRebate` and `DeepAmmMock`).
+- **Enable per swap**:
+  - Pass `hookData = abi.encode(trader, true)` via your router so `afterSwap` attempts the in‑tx arb.
+- **Notes**:
+  - Mock AMM must be pre‑funded with WETH/USDC to pay out; wired addresses on Arbitrum fork: Aave Pool `0x794a61358D6845594F94dc1DB02A252b5b4814aD`, WETH `0x82aF...`, USDC `0xFF97...`.
+  - Experimental; if profit ≤ premium/slippage, callback can revert. Test on forks only.

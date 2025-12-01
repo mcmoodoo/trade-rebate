@@ -67,3 +67,11 @@ wrap-eth amount_wei="10000000000000000000": check-env
 # Query WETH balance (defaults to anvil's first default address)
 weth-balance owner="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": check-env
     cast call 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1 "balanceOf(address)(uint256)" "{{owner}}" --rpc-url "{{rpc_url}}"
+
+# Prefund DeepAmmMock so it can pay out during arb
+# Params:
+# - deep: address of DeepAmmMock
+# - weth_wei: WETH amount to fund (wraps ETH), default 1 WETH
+# - usdc: USDC amount (6 decimals), default 100_000_000 (100 USDC)
+prefund-deep-amm deep="" weth_wei="1000000000000000000" usdc="100000000": check-env
+    DEEP_AMM="{{deep}}" FUND_WETH_WEI="{{weth_wei}}" FUND_USDC="{{usdc}}" forge script script/PrefundDeepAmm.s.sol:PrefundDeepAmm --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}" -vvvv
