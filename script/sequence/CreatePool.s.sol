@@ -10,7 +10,7 @@ import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
 
 /// @notice Creates a pool using deployed infra and tokens; persists fee, tickSpacing, poolId.
-contract CreatePoolFromJson is SequenceBase {
+contract CreatePool is SequenceBase {
     using CurrencyLibrary for Currency;
     using PoolIdLibrary for PoolKey;
 

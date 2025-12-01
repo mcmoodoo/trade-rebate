@@ -23,7 +23,7 @@ contract PayableReceiver {
 }
 
 /// @notice Adds initial liquidity to the created pool using stored deployments.
-contract AddLiquidityFromJson is SequenceBase {
+contract AddLiquidity is SequenceBase {
     using CurrencyLibrary for Currency;
     using StateLibrary for IPoolManager;
     using PoolIdLibrary for PoolKey;

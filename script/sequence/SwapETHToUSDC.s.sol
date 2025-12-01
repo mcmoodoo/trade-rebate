@@ -13,7 +13,7 @@ import {IERC20} from "forge-std/interfaces/IERC20.sol";
 /// @notice Swaps ETH -> USDC using router and pool config from deployments.json
 /// @dev Expects deployments.json to have: token0, token1, lpFee, tickSpacing, hook, router.
 ///      If neither side is native ETH (address(0)), it will attempt ERC20->ERC20 by approving the router.
-contract SwapETHToUSDC_FromJson is SequenceBase {
+contract SwapETHToUSDC is SequenceBase {
     function run() external {
         Deployments memory d = _readDeployments();
         require(d.router != address(0), "Router not set");
