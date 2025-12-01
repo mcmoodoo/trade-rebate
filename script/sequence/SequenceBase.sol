@@ -12,6 +12,7 @@ abstract contract SequenceBase is Script, Deployers {
 
     struct Deployments {
         address hook;
+        address deepAmm;
         address token0;
         address token1;
         address permit2;
@@ -51,6 +52,7 @@ abstract contract SequenceBase is Script, Deployers {
 
         // read fields individually; ignore if missing
         try vm.parseJsonAddress(json, ".hook") returns (address v) { d.hook = v; } catch {}
+        try vm.parseJsonAddress(json, ".deepAmm") returns (address v) { d.deepAmm = v; } catch {}
         try vm.parseJsonAddress(json, ".token0") returns (address v) { d.token0 = v; } catch {}
         try vm.parseJsonAddress(json, ".token1") returns (address v) { d.token1 = v; } catch {}
         try vm.parseJsonAddress(json, ".permit2") returns (address v) { d.permit2 = v; } catch {}
@@ -67,6 +69,7 @@ abstract contract SequenceBase is Script, Deployers {
         string memory json;
 
         json = vm.serializeAddress(obj, "hook", d.hook);
+        json = vm.serializeAddress(obj, "deepAmm", d.deepAmm);
         json = vm.serializeAddress(obj, "token0", d.token0);
         json = vm.serializeAddress(obj, "token1", d.token1);
         json = vm.serializeAddress(obj, "permit2", d.permit2);

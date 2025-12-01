@@ -18,20 +18,19 @@ contract DeployHook is SequenceBase {
 
         uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
 
-        // Deploy a mock deep AMM to trade against; fund it separately if needed
-        DeepAmmMock deep = new DeepAmmMock();
-
         // Aave v3 Arbitrum Pool and canonical assets (USDC, WETH)
         address aavePool = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
         address weth = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
         address usdc = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
 
-        // Mine the hook address for the full constructor args
-        bytes memory args = abi.encode(IPoolManager(d.poolManager), aavePool, address(deep), weth, usdc, uint256(1_000_000e6));
+        vm.startBroadcast();
+        // Deploy a mock deep AMM to trade against; fund it separately if needed
+        DeepAmmMock deep = new DeepAmmMock();
+        // Mine the hook address for the full constructor args (now that deep is deployed)
+        bytes memory args =
+            abi.encode(IPoolManager(d.poolManager), aavePool, address(deep), weth, usdc, uint256(1_000_000e6));
         (address expected, bytes32 salt) =
             HookMiner.find(CREATE2_FACTORY, flags, type(TradeRebate).creationCode, args);
-
-        vm.startBroadcast();
         TradeRebate counter =
             new TradeRebate{salt: salt}(IPoolManager(d.poolManager), IAavePool(aavePool), deep, IERC20(weth), IERC20(usdc), 1_000_000e6);
         vm.stopBroadcast();
@@ -39,6 +38,7 @@ contract DeployHook is SequenceBase {
         require(address(counter) == expected, "Deployed hook address mismatch");
 
         d.hook = address(counter);
+        d.deepAmm = address(deep);
         _writeDeployments(d);
     }
 }

@@ -16,19 +16,20 @@ contract DeployHookScript is BaseScript {
         // hook contracts must have specific flags encoded in the address
         uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
 
-        // Deploy mock deep AMM and use canonical Aave/asset addresses
-        DeepAmmMock deep = new DeepAmmMock();
+        // Canonical addresses
         address aavePool = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
         address weth = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
         address usdc = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
 
-        // Mine a salt that will produce a hook address with the correct flags and constructor
-        bytes memory constructorArgs = abi.encode(poolManager, aavePool, address(deep), weth, usdc, uint256(1_000_000e6));
-        (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_FACTORY, flags, type(TradeRebate).creationCode, constructorArgs);
-
         // Deploy the hook using CREATE2
         vm.startBroadcast();
+        // Deploy deep AMM mock on-chain first
+        DeepAmmMock deep = new DeepAmmMock();
+        // Mine salt with full constructor args (now that deep has an on-chain address)
+        bytes memory constructorArgs =
+            abi.encode(poolManager, aavePool, address(deep), weth, usdc, uint256(1_000_000e6));
+        (address hookAddress, bytes32 salt) =
+            HookMiner.find(CREATE2_FACTORY, flags, type(TradeRebate).creationCode, constructorArgs);
         TradeRebate counter =
             new TradeRebate{salt: salt}(poolManager, IAavePool(aavePool), deep, IERC20(weth), IERC20(usdc), 1_000_000e6);
         vm.stopBroadcast();
