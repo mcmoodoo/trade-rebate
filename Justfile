@@ -11,9 +11,28 @@ check-env:
     echo "RPC_URL={{rpc_url}}"
     echo "PRIVATE_KEY={{private_key}}"
 
-anvil:
-    anvil --rpc-url $INFURA_ARBITRUM_MAINNET_RPC -v
+# Start local Anvil node for Blockscout (bind to all interfaces)
+anvil-local:
+    anvil --host 0.0.0.0 --port 8545 --fork-url $INFURA_ARBITRUM_MAINNET_RPC
 
+# Bring up Blockscout (API + Frontend) stack
+blockscout-up:
+    # Ensure latest images and apply env changes (ANVIL_IP_ADDR) by recreating
+    docker compose -f blockscout/docker-compose.yml up -d --force-recreate anvil blockscout blockscout-frontend
+
+# Tear down Blockscout stack and remove volumes
+blockscout-down:
+    docker compose -f blockscout/docker-compose.yml down -v
+
+# Quick connectivity check to Anvil JSON-RPC
+blockscout-probe:
+    curl -sS -X POST -H 'Content-Type: application/json' \
+      --data '{"jsonrpc":"2.0","id":1,"method":"web3_clientVersion","params":[]}' \
+      http://127.0.0.1:8545 || true
+
+# Open the Blockscout UI
+blockscout-open:
+    xdg-open http://localhost:3000 >/dev/null 2>&1 || true
 deploy-infra: check-env
     forge script script/sequence/DeployV4Infra.s.sol:DeployV4Infra --broadcast --rpc-url "{{rpc_url}}" --private-key "{{private_key}}"
 

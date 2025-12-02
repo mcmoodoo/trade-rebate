@@ -1,4 +1,24 @@
 services:
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:stable
+    command:
+      [
+        "anvil",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8545",
+        "--chain-id",
+        "42161",
+        "--fork-url",
+        "${INFURA_ARBITRUM_MAINNET_RPC:-}",
+      ]
+    environment:
+      ANVIL_IP_ADDR: "0.0.0.0"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8545:8545"
+
   blockscout-db:
     image: postgres:15
     restart: always
@@ -21,16 +41,21 @@ services:
     depends_on:
       blockscout-db:
         condition: service_healthy
-    command: ["sh", "-lc", "/app/bin/blockscout eval 'Ecto.Migrator.with_repo(Explorer.Repo, &Ecto.Migrator.run(&1, :up, all: true))' && /app/bin/blockscout start"]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      anvil:
+        condition: service_started
+    restart: unless-stopped
+    command:
+      [
+        "sh",
+        "-lc",
+        "/app/bin/blockscout eval 'Ecto.Migrator.with_repo(Explorer.Repo, &Ecto.Migrator.run(&1, :up, all: true))' && /app/bin/blockscout start",
+      ]
     environment:
       DATABASE_URL: postgres://blockscout:blockscout@blockscout-db:5432/blockscout
       ECTO_USE_SSL: "false"
-      ETHEREUM_JSONRPC_HTTP_URL: http://host.docker.internal:8545
-      ETHEREUM_JSONRPC_WS_URL: ws://host.docker.internal:8545
-      NETWORK_NAME: "Local Anvil"
-      CHAIN_ID: "31337"
+      ETHEREUM_JSONRPC_HTTP_URL: http://anvil:8545
+      NETWORK_NAME: "Arbitrum One (fork)"
+      CHAIN_ID: "42161"
       PORT: "4000"
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-dev-secret-change-me-and-make-this-long}
       RELEASE_COOKIE: ${RELEASE_COOKIE:-dev-cookie}
@@ -39,5 +64,33 @@ services:
       POOL_SIZE_API: "5"
       ACCOUNT_POOL_SIZE: "5"
       MUD_POOL_SIZE: "1"
+      # Loosen API CORS to allow local frontend and custom headers
+      API_CORS_ALLOWED_ORIGINS: "*"
+      API_CORS_ALLOWED_HEADERS: "x-apollo-tracing,Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,Keep-Alive,X-Requested-With,If-Modified-Since,X-CSRF-Token,updated-gas-oracle"
     ports:
       - "4000:4000"
+
+  blockscout-frontend:
+    image: ghcr.io/blockscout/frontend:latest
+    depends_on:
+      - blockscout
+    environment:
+      NEXT_PUBLIC_APP_HOST: localhost:3000
+      NEXT_PUBLIC_APP_PROTOCOL: http
+      NEXT_PUBLIC_NETWORK_NAME: Local Anvil
+      NEXT_PUBLIC_NETWORK_ID: "42161"
+      NEXT_PUBLIC_API_HOST: localhost:4001
+      NEXT_PUBLIC_API_PROTOCOL: http
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  api-proxy:
+    image: nginx:1.25-alpine
+    depends_on:
+      - blockscout
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "4001:4001"
+    restart: unless-stopped
