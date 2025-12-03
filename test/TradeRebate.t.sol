@@ -20,6 +20,9 @@ import {EasyPosm} from "./utils/libraries/EasyPosm.sol";
 
 import {TradeRebate} from "../src/TradeRebate.sol";
 import {BaseTest} from "./utils/BaseTest.sol";
+import {DeepAmmMock} from "../src/DeepAmmMock.sol";
+import {Bank} from "../src/Bank.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 contract TradeRebateTest is BaseTest {
     using EasyPosm for IPositionManager;
@@ -35,6 +38,9 @@ contract TradeRebateTest is BaseTest {
     TradeRebate hook;
     PoolId poolId;
 
+    Bank bank;
+    DeepAmmMock deepAmm;
+
     uint256 tokenId;
     int24 tickLower;
     int24 tickUpper;
@@ -45,10 +51,23 @@ contract TradeRebateTest is BaseTest {
 
         (currency0, currency1) = deployCurrencyPair();
 
+        // Deploy bank and deep AMM
+        bank = new Bank(0); // 0 bps fee for simple repay in tests
+        deepAmm = new DeepAmmMock();
+
         // Deploy the hook to an address with the correct flags
         address flags =
             address(uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG) ^ (0x4444 << 144)); // namespace
-        bytes memory constructorArgs = abi.encode(poolManager); // Add all the necessary constructor arguments from the hook
+        // Construct args expected by TradeRebate(IPoolManager, IBank, IDeepAmmMock, IERC20 _weth, IERC20 _usdc, uint256)
+        // Use the mocks and the test pair tokens; maxFlashAmount arbitrary
+        bytes memory constructorArgs = abi.encode(
+            poolManager,
+            address(bank), // IBank
+            address(deepAmm), // IDeepAmmMock
+            Currency.unwrap(currency0), // WETH placeholder
+            Currency.unwrap(currency1), // USDC placeholder
+            uint256(1e6) // maxFlashAmount
+        );
         deployCodeTo("TradeRebate.sol:TradeRebate", constructorArgs, flags);
         hook = TradeRebate(flags);
 
@@ -81,6 +100,11 @@ contract TradeRebateTest is BaseTest {
             block.timestamp,
             Constants.ZERO_BYTES
         );
+
+        // Prefund bank and deep AMM with USDC (currency1)
+        address usdcAddr = Currency.unwrap(currency1);
+        IERC20(usdcAddr).transfer(address(bank), 1_000_000e18);
+        IERC20(usdcAddr).transfer(address(deepAmm), 1_000_000e18);
     }
 
     function testCounterHooks() public {
@@ -100,5 +124,25 @@ contract TradeRebateTest is BaseTest {
         assertEq(int256(swapDelta.amount0()), -int256(amountIn));
     }
 
-    // Liquidity hooks removed; only swap hooks are active.
+    function testSwapWithRebate_RepaysBank() public {
+        // opt-in
+        bytes memory hookData = abi.encode(address(this), true);
+        uint256 amountIn = 1e18;
+
+        // Perform swap
+        swapRouter.swapExactTokensForTokens({
+            amountIn: amountIn,
+            amountOutMin: 0,
+            zeroForOne: true,
+            poolKey: poolKey,
+            hookData: hookData,
+            receiver: address(this),
+            deadline: block.timestamp + 1
+        });
+
+        // With 0 bps fee, bank balance should be unchanged after borrow+repay
+        address usdcAddr = Currency.unwrap(currency1);
+        uint256 bankBal = IERC20(usdcAddr).balanceOf(address(bank));
+        assertEq(bankBal, 1_000_000e18, "bank balance changed unexpectedly");
+    }
 }

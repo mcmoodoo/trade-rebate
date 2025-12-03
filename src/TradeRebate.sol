@@ -12,23 +12,13 @@ import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/type
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
-interface IAavePool {
-    function flashLoanSimple(
-        address receiverAddress,
-        address asset,
-        uint256 amount,
-        bytes calldata params,
-        uint16 referralCode
-    ) external;
-}
-
 interface IDeepAmmMock {
     function swapExact(address tokenIn, address tokenOut, uint256 amountIn) external returns (uint256 amountOut);
 }
 
-interface IWETH {
-    function deposit() external payable;
-    function approve(address spender, uint256 amount) external returns (bool);
+interface IBank {
+    function borrow(address token, uint256 amount) external;
+    function feeBps() external view returns (uint256);
 }
 
 contract TradeRebate is BaseHook {
@@ -42,7 +32,7 @@ contract TradeRebate is BaseHook {
     mapping(PoolId => int24) private preSwapTick;
 
     // Config
-    IAavePool public immutable aavePool;
+    IBank public immutable bank;
     IDeepAmmMock public immutable deepAmm;
     IERC20 public immutable tokenUSDC;
     IERC20 public immutable tokenWETH;
@@ -51,11 +41,11 @@ contract TradeRebate is BaseHook {
     // Profit ledger per ERC20
     mapping(address => uint256) public surplusByToken;
 
-    event FlashArbExecuted(address asset, uint256 amount, uint256 premium, uint256 profit);
+    event ArbitrageExecuted(uint256 borrowed, uint256 feePaid, uint256 profit);
 
     constructor(
         IPoolManager _poolManager,
-        IAavePool _aavePool,
+        IBank _bank,
         IDeepAmmMock _deepAmm,
         IERC20 _weth,
         IERC20 _usdc,
@@ -63,7 +53,7 @@ contract TradeRebate is BaseHook {
     )
         BaseHook(_poolManager)
     {
-        aavePool = _aavePool;
+        bank = _bank;
         deepAmm = _deepAmm;
         tokenWETH = _weth;
         tokenUSDC = _usdc;
@@ -125,84 +115,17 @@ contract TradeRebate is BaseHook {
         // Simple guard: attempt only if enabled and movement is non-trivial
         if (enable && _abs(tickAfter - tickBefore) > 0) {
             uint256 amount = maxFlashAmount;
-            // Encode pool leg params for callback
-            bytes memory params = abi.encode(key, amount);
-            // Borrow USDC; arbitrage via pool + deep AMM; repay; keep surplus in USDC
-            aavePool.flashLoanSimple(address(this), address(tokenUSDC), amount, params, 0);
+            // Borrow USDC from the bank (trust-based)
+            bank.borrow(address(tokenUSDC), amount);
+            // Immediately repay principal + fee (no in-hook trading for simplicity)
+            uint256 fee = (amount * bank.feeBps()) / 10_000;
+            uint256 repay = amount + fee;
+            tokenUSDC.transfer(address(bank), repay);
+            emit ArbitrageExecuted(amount, fee, 0);
         }
 
         inHook = false;
         return (BaseHook.afterSwap.selector, 0);
-    }
-
-    // Aave v3 flash loan callback
-    function executeOperation(
-        address asset,
-        uint256 amount,
-        uint256 premium,
-        address,
-        bytes calldata params
-    ) external returns (bool) {
-        require(msg.sender == address(aavePool), "not Aave");
-        require(asset == address(tokenUSDC), "asset mismatch");
-
-        // Decode pool leg params
-        (PoolKey memory key, uint256 poolAmountInUSDC) = abi.decode(params, (PoolKey, uint256));
-
-        // 1) Execute pool leg: swap USDC -> ETH on the attached pool
-        // Guard our own hooks from nested behavior
-        bool prevInHook = inHook;
-        inHook = true;
-        {
-            SwapParams memory sp = SwapParams({
-                zeroForOne: false, // token1 (USDC) -> token0 (ETH)
-                amountSpecified: int256(poolAmountInUSDC),
-                sqrtPriceLimitX96: 0
-            });
-            // Perform swap; returns BalanceDelta (amount0, amount1) relative to caller (this hook)
-            BalanceDelta d = poolManager.swap(key, sp, bytes(""));
-
-            int128 delta0 = d.amount0(); // ETH delta
-            int128 delta1 = d.amount1(); // USDC delta
-
-            // If we owe USDC (negative), pay it: transfer USDC to PoolManager, sync, settle
-            if (delta1 < 0) {
-                uint256 oweUSDC = uint128(uint256(int256(-delta1)));
-                tokenUSDC.transfer(address(poolManager), oweUSDC);
-                poolManager.sync(key.currency1);
-                poolManager.settle();
-            }
-            // If we are owed ETH (positive), take it and wrap to WETH
-            if (delta0 > 0) {
-                uint256 ethOut = uint128(uint256(int256(delta0)));
-                poolManager.take(key.currency0, address(this), ethOut);
-                // wrap to WETH
-                IWETH(address(tokenWETH)).deposit{value: ethOut}();
-            }
-        }
-        inHook = prevInHook;
-
-        // 2) Trade on deep AMM mock: WETH -> USDC to realize profit (we already used USDC on pool leg)
-        uint256 wethBal = tokenWETH.balanceOf(address(this));
-        if (wethBal > 0) {
-            tokenWETH.approve(address(deepAmm), wethBal);
-            deepAmm.swapExact(address(tokenWETH), address(tokenUSDC), wethBal);
-        }
-
-        uint256 usdcBack = tokenUSDC.balanceOf(address(this));
-
-        uint256 repay = amount + premium;
-        require(usdcBack >= repay, "no profit");
-
-        // 3) Repay Aave
-        tokenUSDC.approve(address(aavePool), repay);
-
-        // 4) Record surplus
-        uint256 profit = usdcBack - repay;
-        surplusByToken[address(tokenUSDC)] += profit;
-
-        emit FlashArbExecuted(asset, amount, premium, profit);
-        return true;
     }
 
     function _abs(int256 x) private pure returns (int256) {
