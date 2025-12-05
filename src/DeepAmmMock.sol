@@ -6,7 +6,10 @@ import {IERC20} from "forge-std/interfaces/IERC20.sol";
 /// @notice Extremely simple mock of a deep-liquidity AMM that returns a fixed positive edge
 /// on a two-leg path (tokenIn -> tokenMid -> tokenOut). It requires the contract to be pre-funded
 /// with sufficient balances of both tokens to honor payouts.
-import {IDeepAmmMock} from "./TradeRebate.sol";
+interface IDeepAmmMock {
+    function swapExact(address tokenIn, address tokenOut, uint256 amountIn) external returns (uint256 amountOut);
+    function profitBps() external view returns (uint256);
+}
 
 contract DeepAmmMock is IDeepAmmMock {
     address public immutable owner;
