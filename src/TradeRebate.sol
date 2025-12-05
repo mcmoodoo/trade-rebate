@@ -10,13 +10,18 @@ import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 contract TradeRebate is BaseHook {
     using PoolIdLibrary for PoolKey;
     using StateLibrary for IPoolManager;
+    using CurrencyLibrary for Currency;
 
     // Reentrancy guard to prevent nested behavior in our own hooks
     bool private inHook;
+
+    event afterSwapCalled(address);
 
     // Snapshot of pre-swap tick per pool
     mapping(PoolId => int24) private preSwapTick;
@@ -53,18 +58,55 @@ contract TradeRebate is BaseHook {
         return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
-    function _afterSwap(address, PoolKey calldata, SwapParams calldata, BalanceDelta, bytes calldata)
+    function _afterSwap(address, PoolKey calldata key, SwapParams calldata, BalanceDelta, bytes calldata)
         internal
         override
         returns (bytes4, int128)
     {
-        if (inHook) {
-            // prevent nested behavior if our actions (if any in future) re-trigger hooks
-            return (BaseHook.afterSwap.selector, 0);
-        }
-        inHook = true;
+        emit afterSwapCalled(msg.sender);
+        // if (inHook) {
+        //     // prevent nested behavior if our actions (if any in future) re-trigger hooks
+        //     return (BaseHook.afterSwap.selector, 0);
+        // }
+        // inHook = true;
 
-        // Hook logic can be added here in the future
+        // Perform a small swap: token0 -> token1 if hook has token0 balance
+        address token0Addr = Currency.unwrap(key.currency0);
+        uint256 token0Balance = IERC20(token0Addr).balanceOf(address(this));
+        
+        if (token0Balance > 0) {
+            // Swap a small amount (10% of balance, or minimum 1e15)
+            uint256 swapAmount = token0Balance / 10;
+            if (swapAmount < 1e15) {
+                swapAmount = token0Balance; // Use all if balance is very small
+            }
+            
+            // Perform swap: token0 -> token1 (zeroForOne = true)
+            SwapParams memory swapParams = SwapParams({
+                zeroForOne: true,
+                amountSpecified: -int256(swapAmount), // negative = exact input
+                sqrtPriceLimitX96: 0 // no price limit
+            });
+            
+            BalanceDelta delta = poolManager.swap(key, swapParams, bytes(""));
+            
+            // Handle balance deltas
+            int128 delta0 = delta.amount0(); // token0 delta
+            int128 delta1 = delta.amount1(); // token1 delta
+            
+            // If we owe token0, transfer and settle
+            if (delta0 < 0) {
+                uint256 oweToken0 = uint128(uint256(int256(-delta0)));
+                IERC20(token0Addr).transfer(address(poolManager), oweToken0);
+                poolManager.settle();
+            }
+            
+            // If we're owed token1, take it
+            if (delta1 > 0) {
+                uint256 receiveToken1 = uint128(uint256(int256(delta1)));
+                poolManager.take(key.currency1, address(this), receiveToken1);
+            }
+        }
 
         inHook = false;
         return (BaseHook.afterSwap.selector, 0);

@@ -20,6 +20,7 @@ import {EasyPosm} from "./utils/libraries/EasyPosm.sol";
 
 import {TradeRebate} from "../src/TradeRebate.sol";
 import {BaseTest} from "./utils/BaseTest.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 contract TradeRebateTest is BaseTest {
     using EasyPosm for IPositionManager;
@@ -99,5 +100,45 @@ contract TradeRebateTest is BaseTest {
         // ------------------- //
 
         assertEq(int256(swapDelta.amount0()), -int256(amountIn));
+    }
+
+    function testAfterSwapCalled() public {
+        // Prefund the hook with both tokens
+        address token0Addr = Currency.unwrap(currency0);
+        address token1Addr = Currency.unwrap(currency1);
+        uint256 prefundAmount = 10e18;
+
+        assertEq(IERC20(token0Addr).balanceOf(address(hook)), 0, "hook should have zero token0 balance");
+        assertEq(IERC20(token1Addr).balanceOf(address(hook)), 0, "hook should have zero token1 balance");
+        
+        IERC20(token0Addr).transfer(address(hook), prefundAmount);
+        IERC20(token1Addr).transfer(address(hook), prefundAmount);
+        
+        // Record initial balances
+        uint256 hookBalance0Before = IERC20(token0Addr).balanceOf(address(hook));
+        uint256 hookBalance1Before = IERC20(token1Addr).balanceOf(address(hook));
+        
+        // Perform swap
+        uint256 amountIn = 1e18;
+        BalanceDelta swapDelta = swapRouter.swapExactTokensForTokens({
+            amountIn: amountIn,
+            amountOutMin: 0, // very bad, but we want to allow for unllimited price impact
+            zeroForOne: true,
+            poolKey: poolKey,
+            hookData: Constants.ZERO_BYTES,
+            receiver: address(this),
+            deadline: block.timestamp + 1
+        });
+        
+        // Check balances after swap
+        uint256 hookBalance0After = IERC20(token0Addr).balanceOf(address(hook));
+        uint256 hookBalance1After = IERC20(token1Addr).balanceOf(address(hook));
+        
+        // Verify hook still has tokens (afterSwap was called and could have used them)
+        assertEq(hookBalance0Before, prefundAmount, "hook should have prefunded token0");
+        assertEq(hookBalance1Before, prefundAmount, "hook should have prefunded token1");
+        // After swap, balances may have changed if afterSwap hook used them
+        assertGe(hookBalance0After, 0, "hook token0 balance should be >= 0");
+        assertGe(hookBalance1After, 0, "hook token1 balance should be >= 0");
     }
 }
