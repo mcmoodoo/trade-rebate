@@ -6,18 +6,18 @@ import {BaseHook} from "@openzeppelin/uniswap-hooks/src/base/BaseHook.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {IPoolManager, SwapParams} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {IBarterNFT} from "./IBarterNFT.sol";
 
-contract TradeRebate is BaseHook {
-    using PoolIdLibrary for PoolKey;
-    using StateLibrary for IPoolManager;
+/// @notice KYC Hook that requires traders to own a Barter NFT before swapping
+contract KYCHook is BaseHook {
+    IBarterNFT public immutable barterNFT;
 
-    // Snapshot of pre-swap tick per pool
-    mapping(PoolId => int24) private preSwapTick;
+    error KYCRequired(address trader);
 
-    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
+    constructor(IPoolManager _poolManager, IBarterNFT _barterNFT) BaseHook(_poolManager) {
+        barterNFT = _barterNFT;
+    }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
@@ -38,16 +38,23 @@ contract TradeRebate is BaseHook {
         });
     }
 
-    function _beforeSwap(address, PoolKey calldata key, SwapParams calldata, bytes calldata)
+    function _beforeSwap(address sender, PoolKey calldata, SwapParams calldata, bytes calldata hookData)
         internal
         override
         returns (bytes4, BeforeSwapDelta, uint24)
     {
-        // Snapshot current tick for later spill estimation
-        (uint160 sqrtBefore, int24 tick, uint24 pf0, uint24 lf0) = poolManager.getSlot0(key.toId());
-        preSwapTick[key.toId()] = tick;
+        // Extract trader address from hookData (passed by custom router)
+        address trader = sender; // Default to sender (router)
+        if (hookData.length >= 20) {
+            // If hookData contains an address, use it (from custom router)
+            trader = abi.decode(hookData, (address));
+        }
+
+        // KYC check: verify trader has Barter NFT
+        if (!barterNFT.hasBarterNFT(trader)) {
+            revert KYCRequired(trader);
+        }
+
         return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
-
 }
-
