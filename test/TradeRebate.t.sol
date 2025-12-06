@@ -48,7 +48,7 @@ contract TradeRebateTest is BaseTest {
 
         // Deploy the hook to an address with the correct flags
         address flags =
-            address(uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG) ^ (0x4444 << 144)); // namespace
+            address(uint160(Hooks.BEFORE_SWAP_FLAG) ^ (0x4444 << 144)); // namespace
         // Construct args expected by TradeRebate(IPoolManager)
         bytes memory constructorArgs = abi.encode(poolManager);
         deployCodeTo("TradeRebate.sol:TradeRebate", constructorArgs, flags);
