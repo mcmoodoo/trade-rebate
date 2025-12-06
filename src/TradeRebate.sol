@@ -12,14 +12,12 @@ import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/type
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {TransientStateLibrary} from "@uniswap/v4-core/src/libraries/TransientStateLibrary.sol";
 
 contract TradeRebate is BaseHook {
     using PoolIdLibrary for PoolKey;
     using StateLibrary for IPoolManager;
     using CurrencyLibrary for Currency;
-
-    // Reentrancy guard to prevent nested behavior in our own hooks
-    bool private inHook;
 
     event afterSwapCalled(address);
 
@@ -64,17 +62,15 @@ contract TradeRebate is BaseHook {
         returns (bytes4, int128)
     {
         emit afterSwapCalled(msg.sender);
-        // if (inHook) {
-        //     // prevent nested behavior if our actions (if any in future) re-trigger hooks
-        //     return (BaseHook.afterSwap.selector, 0);
-        // }
-        // inHook = true;
 
+        // Check if PoolManager is unlocked (it won't be during afterSwap)
+        bool isUnlocked = TransientStateLibrary.isUnlocked(poolManager);
+        
         // Perform a small swap: token0 -> token1 if hook has token0 balance
         address token0Addr = Currency.unwrap(key.currency0);
         uint256 token0Balance = IERC20(token0Addr).balanceOf(address(this));
         
-        if (token0Balance > 0) {
+        if (token0Balance > 0 && isUnlocked) {
             // Swap a small amount (10% of balance, or minimum 1e15)
             uint256 swapAmount = token0Balance / 10;
             if (swapAmount < 1e15) {
@@ -107,8 +103,7 @@ contract TradeRebate is BaseHook {
                 poolManager.take(key.currency1, address(this), receiveToken1);
             }
         }
-
-        inHook = false;
+        
         return (BaseHook.afterSwap.selector, 0);
     }
 }
