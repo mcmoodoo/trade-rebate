@@ -6,6 +6,46 @@ A Uniswap v4 hook that restores the pool price back to its pre-swap value using 
 
 **Only Phase 1 is complete. Phase 2 (The actual rebate from self-arbitraging is WIP)**
 
+## Flow Diagram
+
+```mermaid
+flowchart TD
+    Start([Trader Initiates Swap]) --> Router[GatedTradeRebateRouter]
+    Router -->|Encodes trader address into hookData| V4Router[V4SwapRouter]
+    V4Router --> PoolManager[PoolManager.unlock]
+    PoolManager --> Swap[PoolManager.swap]
+    Swap --> BeforeSwap[Hook.beforeSwap]
+    
+    BeforeSwap --> CheckNFT{RebateAccessNFT<br/>hasRebateAccessNFT?}
+    CheckNFT -->|No NFT| Revert[❌ Revert<br/>GatedTradeRebateRequired]
+    CheckNFT -->|Has NFT ✅| ExecuteSwap[Execute Swap]
+    
+    ExecuteSwap --> Phase2Check{Phase 2<br/>Enabled?}
+    Phase2Check -->|No| Complete1[✅ Swap Complete]
+    Phase2Check -->|Yes| AfterSwap[Hook.afterSwap]
+    
+    AfterSwap --> SnapshotPrice[Snapshot Pre-Swap Price]
+    SnapshotPrice --> FlashLoan[Take AAVE Flash Loan]
+    FlashLoan --> Arbitrage[Arbitrage Against<br/>Deep-Liquidity Pool]
+    Arbitrage --> RestorePrice[Restore Pool Price<br/>to sqrtPriceX96]
+    RestorePrice --> Distribute[Distribute Surplus:<br/>Majority to Trader<br/>Some to LPs]
+    Distribute --> RepayLoan[Repay Flash Loan]
+    RepayLoan --> Complete2[✅ Swap + Rebate Complete]
+    
+    style Start fill:#e1f5ff
+    style Complete1 fill:#d4edda
+    style Complete2 fill:#d4edda
+    style Revert fill:#f8d7da
+    style Phase2Check fill:#fff3cd
+    style AfterSwap fill:#fff3cd
+    style SnapshotPrice fill:#fff3cd
+    style FlashLoan fill:#fff3cd
+    style Arbitrage fill:#fff3cd
+    style RestorePrice fill:#fff3cd
+    style Distribute fill:#fff3cd
+    style RepayLoan fill:#fff3cd
+```
+
 ## Phase 1: Gated Access Hook ✅ (Complete)
 
 The first phase implements gated access verification to ensure only authorized traders can access the Trade Rebate hook. The hook enforces access requirements by verifying traders own a Rebate Access NFT before executing swaps.
