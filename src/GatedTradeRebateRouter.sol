@@ -9,7 +9,7 @@ import {IUniswapV4Router04} from "hookmate/interfaces/router/IUniswapV4Router04.
 
 /// @notice Custom router wrapper that automatically passes trader address to hooks via hookData
 /// @dev This router wraps the standard V4 router and automatically encodes msg.sender into hookData
-contract KYCRouter {
+contract GatedTradeRebateRouter {
     IUniswapV4Router04 public immutable router;
 
     constructor(IUniswapV4Router04 _router) {

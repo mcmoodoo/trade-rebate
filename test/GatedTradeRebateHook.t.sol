@@ -18,11 +18,11 @@ import {Constants} from "@uniswap/v4-core/test/utils/Constants.sol";
 
 import {EasyPosm} from "./utils/libraries/EasyPosm.sol";
 
-import {KYCHook} from "../src/KYCHook.sol";
+import {GatedTradeRebateHook} from "../src/GatedTradeRebateHook.sol";
 import {BarterNFT} from "../src/BarterNFT.sol";
 import {BaseTest} from "./utils/BaseTest.sol";
 
-contract KYCHookTest is BaseTest {
+contract GatedTradeRebateHookTest is BaseTest {
     using EasyPosm for IPositionManager;
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
@@ -33,7 +33,7 @@ contract KYCHookTest is BaseTest {
 
     PoolKey poolKey;
 
-    KYCHook hook;
+    GatedTradeRebateHook hook;
     PoolId poolId;
     BarterNFT barterNFT;
 
@@ -53,10 +53,10 @@ contract KYCHookTest is BaseTest {
         // Deploy the hook to an address with the correct flags
         address flags =
             address(uint160(Hooks.BEFORE_SWAP_FLAG) ^ (0x4444 << 144)); // namespace
-        // Construct args expected by KYCHook(IPoolManager, IBarterNFT)
+        // Construct args expected by GatedTradeRebateHook(IPoolManager, IBarterNFT)
         bytes memory constructorArgs = abi.encode(poolManager, barterNFT);
-        deployCodeTo("KYCHook.sol:KYCHook", constructorArgs, flags);
-        hook = KYCHook(flags);
+        deployCodeTo("GatedTradeRebateHook.sol:GatedTradeRebateHook", constructorArgs, flags);
+        hook = GatedTradeRebateHook(flags);
 
         // Create the pool
         poolKey = PoolKey(currency0, currency1, 3000, 60, IHooks(hook));
@@ -89,7 +89,7 @@ contract KYCHookTest is BaseTest {
         );
     }
 
-    function testKYCSucceedsWithNFT() public {
+    function testGatedTradeRebateSucceedsWithNFT() public {
         // Verify trader doesn't have NFT initially
         assertFalse(barterNFT.hasBarterNFT(address(this)), "Trader should not have NFT initially");
         
@@ -112,15 +112,15 @@ contract KYCHookTest is BaseTest {
             deadline: block.timestamp + 1
         });
 
-        // Verify swap succeeded (KYC check passed)
+        // Verify swap succeeded (gate check passed)
         assertEq(int256(swapDelta.amount0()), -int256(amountIn), "Swap should succeed when trader has NFT");
     }
     
-    function testKYCFailsWithoutNFT() public {
+    function testGatedTradeRebateFailsWithoutNFT() public {
         // Verify the trader doesn't have NFT
         assertFalse(barterNFT.hasBarterNFT(address(this)), "Trader should not have NFT");
         
-        // Don't mint NFT - swap should fail with KYCRequired error
+        // Don't mint NFT - swap should fail with GatedTradeRebateRequired error
         uint256 amountIn = 1e18;
         bytes memory hookData = abi.encode(address(this));
         

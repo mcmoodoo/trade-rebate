@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 
 import {ERC721} from "solmate/src/tokens/ERC721.sol";
 
-/// @notice Mock Barter NFT for KYC verification
+/// @notice Mock Barter NFT for gated access verification
 contract BarterNFT is ERC721 {
     uint256 private _nextTokenId = 1;
     address public immutable owner;

@@ -6,12 +6,12 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
 import {SequenceBase} from "./SequenceBase.sol";
-import {KYCHook} from "../../src/KYCHook.sol";
+import {GatedTradeRebateHook} from "../../src/GatedTradeRebateHook.sol";
 import {BarterNFT} from "../../src/BarterNFT.sol";
 import {IBarterNFT} from "../../src/IBarterNFT.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
-/// @notice Mines and deploys the KYC hook with BarterNFT; saves address to deployments.json
+/// @notice Mines and deploys the Gated Trade Rebate hook with BarterNFT; saves address to deployments.json
 contract DeployHook is SequenceBase {
     function run() external {
         Deployments memory d = _readDeployments();
@@ -27,8 +27,8 @@ contract DeployHook is SequenceBase {
         // Mine the hook address for constructor args (poolManager and barterNFT)
         bytes memory args = abi.encode(IPoolManager(d.poolManager), IBarterNFT(address(barterNFT)));
         (address expected, bytes32 salt) =
-            HookMiner.find(CREATE2_FACTORY, flags, type(KYCHook).creationCode, args);
-        KYCHook counter = new KYCHook{salt: salt}(IPoolManager(d.poolManager), IBarterNFT(address(barterNFT)));
+            HookMiner.find(CREATE2_FACTORY, flags, type(GatedTradeRebateHook).creationCode, args);
+        GatedTradeRebateHook counter = new GatedTradeRebateHook{salt: salt}(IPoolManager(d.poolManager), IBarterNFT(address(barterNFT)));
         vm.stopBroadcast();
 
         require(address(counter) == expected, "Deployed hook address mismatch");

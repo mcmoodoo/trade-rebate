@@ -9,11 +9,11 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {IBarterNFT} from "./IBarterNFT.sol";
 
-/// @notice KYC Hook that requires traders to own a Barter NFT before swapping
-contract KYCHook is BaseHook {
+/// @notice Gated Trade Rebate Hook that requires traders to own a Barter NFT before swapping
+contract GatedTradeRebateHook is BaseHook {
     IBarterNFT public immutable barterNFT;
 
-    error KYCRequired(address trader);
+    error GatedTradeRebateRequired(address trader);
 
     constructor(IPoolManager _poolManager, IBarterNFT _barterNFT) BaseHook(_poolManager) {
         barterNFT = _barterNFT;
@@ -50,9 +50,9 @@ contract KYCHook is BaseHook {
             trader = abi.decode(hookData, (address));
         }
 
-        // KYC check: verify trader has Barter NFT
+        // Gate check: verify trader has Barter NFT
         if (!barterNFT.hasBarterNFT(trader)) {
-            revert KYCRequired(trader);
+            revert GatedTradeRebateRequired(trader);
         }
 
         return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);

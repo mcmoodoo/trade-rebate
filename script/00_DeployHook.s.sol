@@ -6,11 +6,11 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 
 import {BaseScript} from "./base/BaseScript.sol";
 
-import {KYCHook} from "../src/KYCHook.sol";
+import {GatedTradeRebateHook} from "../src/GatedTradeRebateHook.sol";
 import {BarterNFT} from "../src/BarterNFT.sol";
 import {IBarterNFT} from "../src/IBarterNFT.sol";
 
-/// @notice Mines the address and deploys the KYC hook with BarterNFT
+/// @notice Mines the address and deploys the Gated Trade Rebate hook with BarterNFT
 contract DeployHookScript is BaseScript {
     function run() public {
         // hook contracts must have specific flags encoded in the address
@@ -25,8 +25,8 @@ contract DeployHookScript is BaseScript {
         // Mine salt with constructor args (poolManager and barterNFT)
         bytes memory constructorArgs = abi.encode(poolManager, IBarterNFT(address(barterNFT)));
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_FACTORY, flags, type(KYCHook).creationCode, constructorArgs);
-        KYCHook counter = new KYCHook{salt: salt}(poolManager, IBarterNFT(address(barterNFT)));
+            HookMiner.find(CREATE2_FACTORY, flags, type(GatedTradeRebateHook).creationCode, constructorArgs);
+        GatedTradeRebateHook counter = new GatedTradeRebateHook{salt: salt}(poolManager, IBarterNFT(address(barterNFT)));
         vm.stopBroadcast();
 
         require(address(counter) == hookAddress, "DeployHookScript: Hook Address Mismatch");
