@@ -7,11 +7,11 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
 import {SequenceBase} from "./SequenceBase.sol";
 import {GatedTradeRebateHook} from "../../src/GatedTradeRebateHook.sol";
-import {BarterNFT} from "../../src/BarterNFT.sol";
-import {IBarterNFT} from "../../src/IBarterNFT.sol";
+import {RebateAccessNFT} from "../../src/RebateAccessNFT.sol";
+import {IRebateAccessNFT} from "../../src/IRebateAccessNFT.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
-/// @notice Mines and deploys the Gated Trade Rebate hook with BarterNFT; saves address to deployments.json
+/// @notice Mines and deploys the Gated Trade Rebate hook with RebateAccessNFT; saves address to deployments.json
 contract DeployHook is SequenceBase {
     function run() external {
         Deployments memory d = _readDeployments();
@@ -21,14 +21,14 @@ contract DeployHook is SequenceBase {
 
         vm.startBroadcast();
         
-        // Deploy BarterNFT first
-        BarterNFT barterNFT = new BarterNFT();
+        // Deploy RebateAccessNFT first
+        RebateAccessNFT rebateAccessNFT = new RebateAccessNFT();
         
-        // Mine the hook address for constructor args (poolManager and barterNFT)
-        bytes memory args = abi.encode(IPoolManager(d.poolManager), IBarterNFT(address(barterNFT)));
+        // Mine the hook address for constructor args (poolManager and rebateAccessNFT)
+        bytes memory args = abi.encode(IPoolManager(d.poolManager), IRebateAccessNFT(address(rebateAccessNFT)));
         (address expected, bytes32 salt) =
             HookMiner.find(CREATE2_FACTORY, flags, type(GatedTradeRebateHook).creationCode, args);
-        GatedTradeRebateHook counter = new GatedTradeRebateHook{salt: salt}(IPoolManager(d.poolManager), IBarterNFT(address(barterNFT)));
+        GatedTradeRebateHook counter = new GatedTradeRebateHook{salt: salt}(IPoolManager(d.poolManager), IRebateAccessNFT(address(rebateAccessNFT)));
         vm.stopBroadcast();
 
         require(address(counter) == expected, "Deployed hook address mismatch");

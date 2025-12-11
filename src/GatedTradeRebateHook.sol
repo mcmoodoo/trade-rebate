@@ -7,16 +7,16 @@ import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {IPoolManager, SwapParams} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {IBarterNFT} from "./IBarterNFT.sol";
+import {IRebateAccessNFT} from "./IRebateAccessNFT.sol";
 
-/// @notice Gated Trade Rebate Hook that requires traders to own a Barter NFT before swapping
+/// @notice Gated Trade Rebate Hook that requires traders to own a Rebate Access NFT before swapping
 contract GatedTradeRebateHook is BaseHook {
-    IBarterNFT public immutable barterNFT;
+    IRebateAccessNFT public immutable rebateAccessNFT;
 
     error GatedTradeRebateRequired(address trader);
 
-    constructor(IPoolManager _poolManager, IBarterNFT _barterNFT) BaseHook(_poolManager) {
-        barterNFT = _barterNFT;
+    constructor(IPoolManager _poolManager, IRebateAccessNFT _rebateAccessNFT) BaseHook(_poolManager) {
+        rebateAccessNFT = _rebateAccessNFT;
     }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
@@ -50,8 +50,8 @@ contract GatedTradeRebateHook is BaseHook {
             trader = abi.decode(hookData, (address));
         }
 
-        // Gate check: verify trader has Barter NFT
-        if (!barterNFT.hasBarterNFT(trader)) {
+        // Gate check: verify trader has Rebate Access NFT
+        if (!rebateAccessNFT.hasRebateAccessNFT(trader)) {
             revert GatedTradeRebateRequired(trader);
         }
 

@@ -19,7 +19,7 @@ import {Constants} from "@uniswap/v4-core/test/utils/Constants.sol";
 import {EasyPosm} from "./utils/libraries/EasyPosm.sol";
 
 import {GatedTradeRebateHook} from "../src/GatedTradeRebateHook.sol";
-import {BarterNFT} from "../src/BarterNFT.sol";
+import {RebateAccessNFT} from "../src/RebateAccessNFT.sol";
 import {BaseTest} from "./utils/BaseTest.sol";
 
 contract GatedTradeRebateHookTest is BaseTest {
@@ -35,7 +35,7 @@ contract GatedTradeRebateHookTest is BaseTest {
 
     GatedTradeRebateHook hook;
     PoolId poolId;
-    BarterNFT barterNFT;
+    RebateAccessNFT rebateAccessNFT;
 
     uint256 tokenId;
     int24 tickLower;
@@ -47,14 +47,14 @@ contract GatedTradeRebateHookTest is BaseTest {
 
         (currency0, currency1) = deployCurrencyPair();
 
-        // Deploy BarterNFT first
-        barterNFT = new BarterNFT();
+        // Deploy RebateAccessNFT first
+        rebateAccessNFT = new RebateAccessNFT();
 
         // Deploy the hook to an address with the correct flags
         address flags =
             address(uint160(Hooks.BEFORE_SWAP_FLAG) ^ (0x4444 << 144)); // namespace
-        // Construct args expected by GatedTradeRebateHook(IPoolManager, IBarterNFT)
-        bytes memory constructorArgs = abi.encode(poolManager, barterNFT);
+        // Construct args expected by GatedTradeRebateHook(IPoolManager, IRebateAccessNFT)
+        bytes memory constructorArgs = abi.encode(poolManager, rebateAccessNFT);
         deployCodeTo("GatedTradeRebateHook.sol:GatedTradeRebateHook", constructorArgs, flags);
         hook = GatedTradeRebateHook(flags);
 
@@ -91,13 +91,13 @@ contract GatedTradeRebateHookTest is BaseTest {
 
     function testGatedTradeRebateSucceedsWithNFT() public {
         // Verify trader doesn't have NFT initially
-        assertFalse(barterNFT.hasBarterNFT(address(this)), "Trader should not have NFT initially");
+        assertFalse(rebateAccessNFT.hasRebateAccessNFT(address(this)), "Trader should not have NFT initially");
         
-        // Mint Barter NFT to this test contract (the trader)
-        barterNFT.mint(address(this));
+        // Mint Rebate Access NFT to this test contract (the trader)
+        rebateAccessNFT.mint(address(this));
         
         // Verify trader now has NFT
-        assertTrue(barterNFT.hasBarterNFT(address(this)), "Trader should have NFT after minting");
+        assertTrue(rebateAccessNFT.hasRebateAccessNFT(address(this)), "Trader should have NFT after minting");
         
         // Perform a swap with trader address in hookData - should succeed because trader has NFT
         uint256 amountIn = 1e18;
@@ -118,7 +118,7 @@ contract GatedTradeRebateHookTest is BaseTest {
     
     function testGatedTradeRebateFailsWithoutNFT() public {
         // Verify the trader doesn't have NFT
-        assertFalse(barterNFT.hasBarterNFT(address(this)), "Trader should not have NFT");
+        assertFalse(rebateAccessNFT.hasRebateAccessNFT(address(this)), "Trader should not have NFT");
         
         // Don't mint NFT - swap should fail with GatedTradeRebateRequired error
         uint256 amountIn = 1e18;

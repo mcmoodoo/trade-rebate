@@ -3,12 +3,12 @@ pragma solidity ^0.8.26;
 
 import {ERC721} from "solmate/src/tokens/ERC721.sol";
 
-/// @notice Mock Barter NFT for gated access verification
-contract BarterNFT is ERC721 {
+/// @notice NFT for gated access verification to Trade Rebate Hook
+contract RebateAccessNFT is ERC721 {
     uint256 private _nextTokenId = 1;
     address public immutable owner;
 
-    constructor() ERC721("Barter NFT", "BARTER") {
+    constructor() ERC721("Rebate Access NFT", "REBATE") {
         owner = msg.sender;
     }
 
@@ -31,13 +31,13 @@ contract BarterNFT is ERC721 {
         return tokenIds;
     }
 
-    /// @notice Check if an address owns at least one Barter NFT
-    function hasBarterNFT(address account) external view returns (bool) {
+    /// @notice Check if an address owns at least one Rebate Access NFT
+    function hasRebateAccessNFT(address account) external view returns (bool) {
         return balanceOf(account) > 0;
     }
 
     /// @notice Returns the token URI (required by ERC721)
     function tokenURI(uint256) public pure override returns (string memory) {
-        return "https://barter.xyz/nft/";
+        return "https://rebate.xyz/nft/";
     }
 }

@@ -8,26 +8,26 @@ A Uniswap v4 hook that restores the pool price back to its pre-swap value using 
 
 ## Phase 1: Gated Access Hook ✅ (Complete)
 
-The first phase implements gated access verification to ensure only authorized traders can access the Trade Rebate hook. The hook enforces access requirements by verifying traders own a Barter NFT before executing swaps.
+The first phase implements gated access verification to ensure only authorized traders can access the Trade Rebate hook. The hook enforces access requirements by verifying traders own a Rebate Access NFT before executing swaps.
 
 ### How It Works
 
 1. Trader calls `GatedTradeRebateRouter.swapExactTokensForTokens()`
 2. Router automatically encodes `msg.sender` (trader address) into `hookData`
-3. `GatedTradeRebateHook.beforeSwap()` extracts trader address and checks `BarterNFT.hasBarterNFT(trader)`
+3. `GatedTradeRebateHook.beforeSwap()` extracts trader address and checks `RebateAccessNFT.hasRebateAccessNFT(trader)`
 4. Swap proceeds if NFT exists, otherwise reverts with `GatedTradeRebateRequired`
 
 ### Components
 
 - **GatedTradeRebateHook**: Validates NFT ownership before swaps
 - **GatedTradeRebateRouter**: Custom router wrapper that auto-encodes trader address into `hookData`
-- **BarterNFT**: NFT contract used for gated access verification
+- **RebateAccessNFT**: NFT contract used for gated access verification
 
 ### Usage
 
 ```solidity
-// Deploy hook with BarterNFT contract
-GatedTradeRebateHook hook = new GatedTradeRebateHook(poolManager, barterNFT);
+// Deploy hook with RebateAccessNFT contract
+GatedTradeRebateHook hook = new GatedTradeRebateHook(poolManager, rebateAccessNFT);
 
 // Users swap through GatedTradeRebateRouter
 gatedTradeRebateRouter.swapExactTokensForTokens(
