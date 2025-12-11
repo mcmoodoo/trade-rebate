@@ -1,8 +1,8 @@
 # Gated Trade Rebate Hook
 
-**Concept**: You spill money on the floor during the swap → Your hook picks the money back up → And returns the majority back to you with some left for LPs.
-
 A Uniswap v4 hook that restores the pool price back to its pre-swap value using a post-swap hook, capturing arbitrage opportunities and returning surplus to traders.
+
+**Concept**: You spill money on the floor during the swap (due to price impact) → Your hook picks the money back up → And returns the majority back to you with some left for LPs.
 
 **Only Phase 1 is complete. Phase 2 (The actual rebate from self-arbitraging is WIP)**
 
@@ -15,15 +15,15 @@ flowchart TD
     V4Router --> PoolManager[PoolManager.unlock]
     PoolManager --> Swap[PoolManager.swap]
     Swap --> BeforeSwap[Hook.beforeSwap]
-    
+
     BeforeSwap --> CheckNFT{RebateAccessNFT<br/>hasRebateAccessNFT?}
     CheckNFT -->|No NFT| Revert[❌ Revert<br/>GatedTradeRebateRequired]
     CheckNFT -->|Has NFT ✅| ExecuteSwap[Execute Swap]
-    
+
     ExecuteSwap --> Phase2Check{Phase 2<br/>Enabled?}
     Phase2Check -->|No| Complete1[✅ Swap Complete]
     Phase2Check -->|Yes| AfterSwap[Hook.afterSwap]
-    
+
     AfterSwap --> SnapshotPrice[Snapshot Pre-Swap Price]
     SnapshotPrice --> FlashLoan[Take AAVE Flash Loan]
     FlashLoan --> Arbitrage[Arbitrage Against<br/>Deep-Liquidity Pool]
@@ -31,7 +31,7 @@ flowchart TD
     RestorePrice --> Distribute[Distribute Surplus:<br/>Majority to Trader<br/>Some to LPs]
     Distribute --> RepayLoan[Repay Flash Loan]
     RepayLoan --> Complete2[✅ Swap + Rebate Complete]
-    
+
     style Start fill:#e1f5ff
     style Complete1 fill:#d4edda
     style Complete2 fill:#d4edda
