@@ -87,3 +87,17 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed flow diagrams.
 ## Phase 2: Trade Rebate Mechanism 🔄 (WIP)
 
 The core Trade Rebate functionality. Snapshots the price before the swap, performs the swap, then in the post-swap hook, takes out a flash loan from AAVE and performs an arbitrage against a deep-liquidity pool (e.g., main ETH/USDC pool) to return the pool to the original `sqrtPriceX96` without leaving any value-extraction opportunity for arbitraguers. The surplus gained is returned back to the trader with some left for LPs.
+
+### Use Cases
+
+**MEV Protection & Value Capture**: Capture arbitrage opportunities that would otherwise be extracted by external bots, returning value to traders instead of MEV extractors and reducing front-running incentives.
+
+**Price Impact Mitigation**: Restore pool price after large trades, reducing slippage for subsequent traders and maintaining price stability.
+
+**Trader Rebate Programs**: Return arbitrage profits to original traders, sharing surplus between traders and LPs to improve trader economics.
+
+**Institutional Trading**: Enable large trades without leaving arbitrage opportunities on the table, providing better execution for institutions.
+
+**Liquidity Provider Revenue**: Share arbitrage profits with LPs, incentivizing deeper liquidity and improving LP returns.
+
+**Competitive Trading Venues**: Differentiate trading venues with rebates, attracting traders with better economics and creating competitive moats through access control + rebates.
