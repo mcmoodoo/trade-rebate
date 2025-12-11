@@ -18,11 +18,11 @@ import {Constants} from "@uniswap/v4-core/test/utils/Constants.sol";
 
 import {EasyPosm} from "./utils/libraries/EasyPosm.sol";
 
-import {TradeRebate} from "../src/TradeRebate.sol";
+import {GatedTradeRebateHook} from "../src/GatedTradeRebateHook.sol";
+import {RebateAccessNFT} from "../src/RebateAccessNFT.sol";
 import {BaseTest} from "./utils/BaseTest.sol";
-import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
-contract TradeRebateTest is BaseTest {
+contract GatedTradeRebateHookTest is BaseTest {
     using EasyPosm for IPositionManager;
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
@@ -33,8 +33,9 @@ contract TradeRebateTest is BaseTest {
 
     PoolKey poolKey;
 
-    TradeRebate hook;
+    GatedTradeRebateHook hook;
     PoolId poolId;
+    RebateAccessNFT rebateAccessNFT;
 
     uint256 tokenId;
     int24 tickLower;
@@ -46,13 +47,16 @@ contract TradeRebateTest is BaseTest {
 
         (currency0, currency1) = deployCurrencyPair();
 
+        // Deploy RebateAccessNFT first
+        rebateAccessNFT = new RebateAccessNFT();
+
         // Deploy the hook to an address with the correct flags
         address flags =
-            address(uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG) ^ (0x4444 << 144)); // namespace
-        // Construct args expected by TradeRebate(IPoolManager)
-        bytes memory constructorArgs = abi.encode(poolManager);
-        deployCodeTo("TradeRebate.sol:TradeRebate", constructorArgs, flags);
-        hook = TradeRebate(flags);
+            address(uint160(Hooks.BEFORE_SWAP_FLAG) ^ (0x4444 << 144)); // namespace
+        // Construct args expected by GatedTradeRebateHook(IPoolManager, IRebateAccessNFT)
+        bytes memory constructorArgs = abi.encode(poolManager, rebateAccessNFT);
+        deployCodeTo("GatedTradeRebateHook.sol:GatedTradeRebateHook", constructorArgs, flags);
+        hook = GatedTradeRebateHook(flags);
 
         // Create the pool
         poolKey = PoolKey(currency0, currency1, 3000, 60, IHooks(hook));
@@ -85,60 +89,51 @@ contract TradeRebateTest is BaseTest {
         );
     }
 
-    function testCounterHooks() public {
-        // Perform a test swap //
+    function testGatedTradeRebateSucceedsWithNFT() public {
+        // Verify trader doesn't have NFT initially
+        assertFalse(rebateAccessNFT.hasRebateAccessNFT(address(this)), "Trader should not have NFT initially");
+        
+        // Mint Rebate Access NFT to this test contract (the trader)
+        rebateAccessNFT.mint(address(this));
+        
+        // Verify trader now has NFT
+        assertTrue(rebateAccessNFT.hasRebateAccessNFT(address(this)), "Trader should have NFT after minting");
+        
+        // Perform a swap with trader address in hookData - should succeed because trader has NFT
         uint256 amountIn = 1e18;
+        bytes memory hookData = abi.encode(address(this)); // Pass trader address
         BalanceDelta swapDelta = swapRouter.swapExactTokensForTokens({
             amountIn: amountIn,
             amountOutMin: 0, // Very bad, but we want to allow for unlimited price impact
             zeroForOne: true,
             poolKey: poolKey,
-            hookData: Constants.ZERO_BYTES,
+            hookData: hookData,
             receiver: address(this),
             deadline: block.timestamp + 1
         });
-        // ------------------- //
 
-        assertEq(int256(swapDelta.amount0()), -int256(amountIn));
+        // Verify swap succeeded (gate check passed)
+        assertEq(int256(swapDelta.amount0()), -int256(amountIn), "Swap should succeed when trader has NFT");
     }
-
-    function testAfterSwapCalled() public {
-        // Prefund the hook with both tokens
-        address token0Addr = Currency.unwrap(currency0);
-        address token1Addr = Currency.unwrap(currency1);
-        uint256 prefundAmount = 10e18;
-
-        assertEq(IERC20(token0Addr).balanceOf(address(hook)), 0, "hook should have zero token0 balance");
-        assertEq(IERC20(token1Addr).balanceOf(address(hook)), 0, "hook should have zero token1 balance");
+    
+    function testGatedTradeRebateFailsWithoutNFT() public {
+        // Verify the trader doesn't have NFT
+        assertFalse(rebateAccessNFT.hasRebateAccessNFT(address(this)), "Trader should not have NFT");
         
-        IERC20(token0Addr).transfer(address(hook), prefundAmount);
-        IERC20(token1Addr).transfer(address(hook), prefundAmount);
-        
-        // Record initial balances
-        uint256 hookBalance0Before = IERC20(token0Addr).balanceOf(address(hook));
-        uint256 hookBalance1Before = IERC20(token1Addr).balanceOf(address(hook));
-        
-        // Perform swap
+        // Don't mint NFT - swap should fail with GatedTradeRebateRequired error
         uint256 amountIn = 1e18;
-        BalanceDelta swapDelta = swapRouter.swapExactTokensForTokens({
+        bytes memory hookData = abi.encode(address(this));
+        
+        // Swap should revert because trader doesn't have NFT
+        vm.expectRevert();
+        swapRouter.swapExactTokensForTokens({
             amountIn: amountIn,
-            amountOutMin: 0, // very bad, but we want to allow for unllimited price impact
+            amountOutMin: 0,
             zeroForOne: true,
             poolKey: poolKey,
-            hookData: Constants.ZERO_BYTES,
+            hookData: hookData,
             receiver: address(this),
             deadline: block.timestamp + 1
         });
-        
-        // Check balances after swap
-        uint256 hookBalance0After = IERC20(token0Addr).balanceOf(address(hook));
-        uint256 hookBalance1After = IERC20(token1Addr).balanceOf(address(hook));
-        
-        // Verify hook still has tokens (afterSwap was called and could have used them)
-        assertEq(hookBalance0Before, prefundAmount, "hook should have prefunded token0");
-        assertEq(hookBalance1Before, prefundAmount, "hook should have prefunded token1");
-        // After swap, balances may have changed if afterSwap hook used them
-        assertGe(hookBalance0After, 0, "hook token0 balance should be >= 0");
-        assertGe(hookBalance1After, 0, "hook token1 balance should be >= 0");
     }
 }

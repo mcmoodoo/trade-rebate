@@ -1,37 +1,49 @@
-## Trade Rebate - arbitraging my own trade
+# Gated Trade Rebate Hook
 
-You spill money on the floor during the swap →
-Your hook picks the money back up →
-But it’s still your money either way.
+**Concept**: You spill money on the floor during the swap → Your hook picks the money back up → And returns the majority back to you with some left for LPs.
 
-## Proof of Concept
+A Uniswap v4 hook that restores the pool price back to its pre-swap value using a post-swap hook, capturing arbitrage opportunities and returning surplus to traders.
 
-Write a minimal PoC Uniswap v4 hook in modern Solidity that restores the pool price back to its pre-swap value using a post-swap hook. No external price feeds. Snapshot the price before the swap, perform the swap, then in the post-swap hook execute a balancing swap to return the pool to the original sqrtPriceX96. Include:
+**Only Phase 1 is complete. Phase 2 (The actual rebate from self-arbitraging is WIP)**
 
-A clean, compilable Hook contract
+## Phase 1: Gated Access Hook ✅ (Complete)
 
-How it stores the pre-swap price
+The first phase implements gated access verification to ensure only authorized traders can access the Trade Rebate hook. The hook enforces access requirements by verifying traders own a Rebate Access NFT before executing swaps.
 
-How it triggers the corrective swap
+### How It Works
 
-Example test using Foundry
-Keep code concise.
+1. Trader calls `GatedTradeRebateRouter.swapExactTokensForTokens()`
+2. Router automatically encodes `msg.sender` (trader address) into `hookData`
+3. `GatedTradeRebateHook.beforeSwap()` extracts trader address and checks `RebateAccessNFT.hasRebateAccessNFT(trader)`
+4. Swap proceeds if NFT exists, otherwise reverts with `GatedTradeRebateRequired`
 
-## So Far
+### Components
 
-I've got USDC on the local anvil fork. I am able to swap default anvil's account's ETH for USDC: 5ETH -> USDC
+- **GatedTradeRebateHook**: Validates NFT ownership before swaps
+- **GatedTradeRebateRouter**: Custom router wrapper that auto-encodes trader address into `hookData`
+- **RebateAccessNFT**: NFT contract used for gated access verification
 
-I can then provide that token pair as liquidity to my own Pool with a hook attached.
+### Usage
 
-What can I do? Take out a flash loan from AAVE/Morpho...
+```solidity
+// Deploy hook with RebateAccessNFT contract
+GatedTradeRebateHook hook = new GatedTradeRebateHook(poolManager, rebateAccessNFT);
 
-### Flash‑loan arbitrage rebate (experimental)
+// Users swap through GatedTradeRebateRouter
+gatedTradeRebateRouter.swapExactTokensForTokens(
+    amountIn,
+    amountOutMin,
+    zeroForOne,
+    poolKey,
+    receiver,
+    deadline
+);
+```
 
-- **What it does**: The `TradeRebate` hook snapshots the pre‑swap tick in `beforeSwap` and, if enabled, uses `afterSwap` to take an Aave v3 flash loan, trade against a deep‑liquidity AMM (mocked), repay, and record any USDC profit on its internal ledger (`surplusByToken`).
-- **Deploy/run**:
-  - `just deploy-hook` then `just create-pool` (deploys `TradeRebate` and `DeepAmmMock`).
-- **Enable per swap**:
-  - Pass `hookData = abi.encode(trader, true)` via your router so `afterSwap` attempts the in‑tx arb.
-- **Notes**:
-  - Mock AMM must be pre‑funded with WETH/USDC to pay out; wired addresses on Arbitrum fork: Aave Pool `0x794a61358D6845594F94dc1DB02A252b5b4814aD`, WETH `0x82aF...`, USDC `0xFF97...`.
-  - Experimental; if profit ≤ premium/slippage, callback can revert. Test on forks only.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed flow diagrams.
+
+---
+
+## Phase 2: Trade Rebate Mechanism 🔄 (WIP)
+
+The core Trade Rebate functionality. Snapshots the price before the swap, performs the swap, then in the post-swap hook, takes out a flash loan from AAVE and performs an arbitrage against a deep-liquidity pool (e.g., main ETH/USDC pool) to return the pool to the original `sqrtPriceX96` without leaving any value-extraction opportunity for arbitraguers. The surplus gained is returned back to the trader with some left for LPs.

@@ -6,22 +6,29 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
 import {SequenceBase} from "./SequenceBase.sol";
-import {TradeRebate} from "../../src/TradeRebate.sol";
+import {GatedTradeRebateHook} from "../../src/GatedTradeRebateHook.sol";
+import {RebateAccessNFT} from "../../src/RebateAccessNFT.sol";
+import {IRebateAccessNFT} from "../../src/IRebateAccessNFT.sol";
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
-/// @notice Mines and deploys the Counter hook; saves address to deployments.json
+/// @notice Mines and deploys the Gated Trade Rebate hook with RebateAccessNFT; saves address to deployments.json
 contract DeployHook is SequenceBase {
     function run() external {
         Deployments memory d = _readDeployments();
         require(d.poolManager != address(0), "PoolManager not deployed");
 
-        uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
+        uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG);
 
         vm.startBroadcast();
-        // Mine the hook address for constructor args
-        bytes memory args = abi.encode(IPoolManager(d.poolManager));
+        
+        // Deploy RebateAccessNFT first
+        RebateAccessNFT rebateAccessNFT = new RebateAccessNFT();
+        
+        // Mine the hook address for constructor args (poolManager and rebateAccessNFT)
+        bytes memory args = abi.encode(IPoolManager(d.poolManager), IRebateAccessNFT(address(rebateAccessNFT)));
         (address expected, bytes32 salt) =
-            HookMiner.find(CREATE2_FACTORY, flags, type(TradeRebate).creationCode, args);
-        TradeRebate counter = new TradeRebate{salt: salt}(IPoolManager(d.poolManager));
+            HookMiner.find(CREATE2_FACTORY, flags, type(GatedTradeRebateHook).creationCode, args);
+        GatedTradeRebateHook counter = new GatedTradeRebateHook{salt: salt}(IPoolManager(d.poolManager), IRebateAccessNFT(address(rebateAccessNFT)));
         vm.stopBroadcast();
 
         require(address(counter) == expected, "Deployed hook address mismatch");
