@@ -1,3 +1,5 @@
+![Placeholder](./secret-swap-service.png)
+
 # Gated Trade Rebate Hook
 
 A Uniswap v4 hook that restores the pool price back to its pre-swap value using a post-swap hook, capturing arbitrage opportunities and returning surplus to traders.
